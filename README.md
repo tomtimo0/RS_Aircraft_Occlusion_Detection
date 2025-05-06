@@ -186,7 +186,7 @@
 
 **项目核心：** 遮挡条件下遥感图像中的飞机目标检测 (使用高斯光斑模拟遮挡, DOTA数据集, 倾斜目标框回归)
 
-**团队规模：** 5人 (建议确定一位组长进行协调和进度管理)
+**团队规模：** 5人 (组长进行协调和进度管理)
 
 ---
 
@@ -418,13 +418,13 @@
             *   分支命名规范：`feature/task-description` (如 `feature/gaussian-occlusion`), `fix/bug-description` (如 `fix/dota-loader-error`), `docs/update-readme`, `chore/setup-ci`。
         3.  **本地开发和提交**: 在你的特性分支上进行开发，频繁地进行小的、原子性的提交。
         4.  **定期拉取 `main` 更新**: 定期将 `main` 分支的最新更改合并到你的特性分支，以尽早发现和解决冲突：
-            \`\`\`bash
+            ```bash
             git checkout main
             git pull origin main
             git checkout your-feature-branch
             git merge main
             # (解决冲突，然后提交)
-            \`\`\`
+            ```
         5.  **推送特性分支**: 将你的特性分支推送到 GitHub。
         6.  **创建 Pull Request (PR)**: 当特性开发完成并通过初步测试后，在 GitHub 上为你的特性分支创建一个 Pull Request，目标是合并到 `main` 分支。
 
