@@ -1,5 +1,3 @@
-<details><summary>Git、GitHub操作与团队协作指南 (点击展开/折叠)</summary>
-
 ### 一、常用 Git 操作详解
 
 1.  **克隆仓库 (Cloning)**
