@@ -1,0 +1,3 @@
+from ultralytics.data.converter import convert_dota_to_yolo_obb
+
+convert_dota_to_yolo_obb("E:/RS_Aircraft_Occlusion_Detection/DOTA_for_convert")
