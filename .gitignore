@@ -176,5 +176,8 @@ cython_debug/
 DOTA_for_convert/
 DOTA_devkit/
 yolo_obb_dataset/
+dota_obb_dataset/
 technical_path_summary.md
 runs/
+yolov8n-obb.pt
+yolo11n.pt
