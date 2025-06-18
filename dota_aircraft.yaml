@@ -1,8 +1,8 @@
 # YOLOv8 OBB ÅäÖÃÎÄ¼ş
 
 path: E:/RS_Aircraft_Occlusion_Detection/dataset
-train: train_test/images
-val: val/images
+train: original_train/images
+val: original_val/images
 nc: 1
 names:
   - aircraft

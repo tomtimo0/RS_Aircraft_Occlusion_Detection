@@ -3,8 +3,8 @@ import yaml
 config = {
     #数据集路径配置
     'path': 'E:/RS_Aircraft_Occlusion_Detection/dataset',
-    'train': 'train_test/images',#训练集图像路径
-    'val': 'val/images',#验证集图像路径
+    'train': 'original_train/images',#训练集图像路径
+    'val': 'original_val/images',#验证集图像路径
 
     #类别信息
     'nc': 1,

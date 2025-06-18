@@ -1,29 +1,97 @@
 from ultralytics import YOLO
+import multiprocessing
+import torch # 导入torch，可能需要检查或设置其多进程行为
+import platform # 用于检查操作系统
 
-#选择已训练好的模型路径
-model = YOLO('runs/obb/train/yolov8n_obb_train_test_v1/weights/best.pt')
+# ----------------------------------------------------------------------
+# 将所有核心逻辑封装在一个函数中
+# ----------------------------------------------------------------------
+def run_yolo_validation():
+    print(f"Script starting on platform: {platform.system()}")
+    print(f"Current multiprocessing start method: {multiprocessing.get_start_method(allow_none=True)}")
 
-# 验证项目的名称，结果会保存在 runs/obb/val/project_name 目录下
-project_name = 'runs/obb/val'
-# 本次实验的名称，结果会保存在 project_name/exp_name 目录下,对于不同的训练实验应更改不同实验name
-exp_name = 'yolov8n_obb_val_test_v1' 
+    # 尝试显式设置多进程启动方法为 'spawn' (主要针对Windows/macOS)
+    # 这应该在任何进程启动之前完成，所以放在这里
 
-# 验证模型
-metrics = model.val(
-    data='dota_aircraft.yaml',  # 指定用于验证的数据集配置文件
-    imgsz=640,            # 输入图像的尺寸，应与训练时使用的图像尺寸一致或兼容
-    batch=4,              # 每批次处理的图像数量，根据你的GPU显存进行调整
-    split='val',          # 指定使用数据集配置文件中定义的 'val' (验证集) 部分进行评估
-    project=project_name,
-    name=exp_name 
-)
+    print("Initializing YOLO model...")
+    # 选择已训练好的模型路径
+    model_path = 'runs/train/yolov8n_obb_train_v3/weights/best.pt'
+    try:
+        model = YOLO(model_path)
+        print(f"Model '{model_path}' loaded successfully.")
+    except Exception as e:
+        print(f"FATAL: Error loading YOLO model: {e}")
+        print("Please ensure the model path is correct and the model file is accessible.")
+        return # 如果模型加载失败，则退出
 
-# 打印验证指标
-print("验证指标 (Validation Metrics):")
-# mAP50-95(B): 表示在 IoU (Intersection over Union) 阈值从 0.5 到 0.95，步长为 0.05 的范围内的平均 mAP (mean Average Precision)。
-# (B) 通常表示这是针对边界框 (Box) 的指标，对于 OBB (Oriented Bounding Box) 任务，这是旋转框的 mAP。
-print(f"mAP50-95(B): {metrics.box.map}")
-# mAP50(B): 表示在 IoU 阈值为 0.5 时的 mAP。
-print(f"mAP50(B): {metrics.box.map50}")
-# mAP75(B): 表示在 IoU 阈值为 0.75 时的 mAP。这是一个更严格的指标。
-print(f"mAP75(B): {metrics.box.map75}")
+    # 验证项目的名称
+    project_name = 'runs/val'
+    exp_name = 'yolov8n_obb_val_v'
+    data_config = 'dota_aircraft.yaml'
+
+    print(f"\nStarting validation...")
+    print(f"  Dataset config: {data_config}")
+    print(f"  Project: {project_name}")
+    print(f"  Experiment Name: {exp_name}")
+    print(f"  Input image size: 640")
+    print(f"  Batch size: 4")
+
+    # --- 关键调试点：尝试将 workers 设置为 0 ---
+    # 这将禁用数据加载的多进程，如果错误消失，则问题与 DataLoader 的多进程有关。
+    num_workers = 0 # <--- 重要：从这里开始调试
+    print(f"  Using num_workers for DataLoader: {num_workers} (0 means no subprocesses for data loading)")
+
+    try:
+        metrics = model.val(
+            data=data_config,
+            imgsz=640,
+            batch=4,
+            split='val',
+            project=project_name,
+            name=exp_name,
+            workers=num_workers,  # <--- 将 workers 参数传递给 val 方法
+            # verbose=True,       # 可以尝试开启详细输出，看是否有更多信息
+        )
+        print("\nmodel.val() completed.")
+    except RuntimeError as e:
+        print(f"\nFATAL: RuntimeError during model.val(): {e}")
+        print("This strongly indicates a multiprocessing issue, even with 'if __name__ == \"__main__\":'.")
+        if num_workers > 0:
+            print("RECOMMENDATION: Try setting 'workers=0' in model.val() to disable multiprocessing for data loading.")
+        else:
+            print("Issue persists even with 'workers=0'. This is unusual and might point to a deeper issue or a bug.")
+        return
+    except Exception as e:
+        print(f"\nFATAL: An unexpected error occurred during model.val(): {e}")
+        return
+
+    # 打印验证指标
+    print("\n验证指标 (Validation Metrics):")
+    if metrics and hasattr(metrics, 'box') and hasattr(metrics.box, 'map') and metrics.box.map is not None:
+        print(f"  mAP50-95(B): {metrics.box.map:.4f}")
+        print(f"  mAP50(B): {metrics.box.map50:.4f}")
+        print(f"  mAP75(B): {metrics.box.map75:.4f}")
+    else:
+        print("  Could not retrieve valid box metrics or metrics.box.map was None.")
+        if metrics:
+            print(f"  Raw metrics object: {metrics}")
+            if hasattr(metrics, 'box'):
+                print(f"  Box metrics content: {metrics.box}")
+            else:
+                print("  Metrics object does not have 'box' attribute.")
+        else:
+            print("  Metrics object is None.")
+
+# ----------------------------------------------------------------------
+# 主程序入口点
+# ----------------------------------------------------------------------
+if __name__ == '__main__':
+    # 1. freeze_support() 是第一件事，尤其是在 Windows 或打包时
+    #    它应该在任何多进程代码之前被调用。
+    multiprocessing.freeze_support()
+    print("multiprocessing.freeze_support() called.")
+
+    # 2. 调用包含所有核心逻辑的函数
+    run_yolo_validation()
+
+    print("\nScript finished.")
