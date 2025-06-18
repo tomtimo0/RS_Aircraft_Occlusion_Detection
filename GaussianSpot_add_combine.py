@@ -1,0 +1,178 @@
+import os
+import cv2
+import numpy as np
+import random
+from tqdm import tqdm
+
+def parse_label_file_for_planes(label_path):
+    """
+    解析DOTA格式的标签文件，提取所有'plane'目标的边界框。
+
+    参数:
+    - label_path: 标签文件的路径。
+
+    返回:
+    - 一个包含所有'plane'目标边界框的列表，每个边界框格式为 [xmin, ymin, xmax, ymax]。
+      如果文件不存在或没有飞机，则返回空列表。
+    """
+    planes_bboxes = []
+    if not os.path.exists(label_path):
+        return planes_bboxes
+
+    with open(label_path, 'r') as f:
+        for line in f:
+            parts = line.strip().split()
+            # 标签格式通常是 8个坐标 + 类别 + 难度
+            if len(parts) >= 9 and parts[8].lower() == 'plane':
+                try:
+                    coords = np.array([float(p) for p in parts[:8]]).reshape(4, 2)
+                    xmin = int(np.min(coords[:, 0]))
+                    ymin = int(np.min(coords[:, 1]))
+                    xmax = int(np.max(coords[:, 0]))
+                    ymax = int(np.max(coords[:, 1]))
+                    planes_bboxes.append([xmin, ymin, xmax, ymax])
+                except (ValueError, IndexError):
+                    continue # 如果行格式不正确，跳过
+    return planes_bboxes
+
+
+def add_glares_with_targeting(image, plane_bboxes, max_extra_spots=2, min_radius_ratio=0.05, max_radius_ratio=0.18, min_intensity=1.6, max_intensity=2.5):
+    """
+    在图像上添加光斑，优先在'plane'目标上添加一个，其余随机分布。
+
+    参数:
+    - image: 输入的OpenCV图像。
+    - plane_bboxes: 'plane'目标的边界框列表。
+    - max_extra_spots: 除了目标上的光斑外，额外随机添加的光斑的最大数量。
+    - 其他参数控制光斑外观。
+
+    返回:
+    - 带有光斑的图像。
+    """
+    height, width, _ = image.shape
+    spots_to_generate = []
+    
+    # 1. 确定光斑的生成规则
+    target_spot_generated = False
+    # 如果存在飞机，则强制在其中一架上生成一个光斑
+    if plane_bboxes:
+        target_plane_bbox = random.choice(plane_bboxes)
+        xmin, ymin, xmax, ymax = target_plane_bbox
+
+        # 确保边界框有效
+        if xmax > xmin and ymax > ymin:
+            # 在飞机边界框内随机选择中心点
+            center_x = random.randint(xmin, xmax)
+            center_y = random.randint(ymin, ymax)
+            spots_to_generate.append({'center_x': center_x, 'center_y': center_y})
+            target_spot_generated = True
+
+    # 2. 确定额外光斑的数量
+    num_extra_spots = random.randint(0, max_extra_spots)
+    # 如果没有在飞机上生成光斑（因为图中没有飞机），则至少生成一个随机光斑
+    if not target_spot_generated:
+        num_extra_spots = random.randint(1, max_extra_spots if max_extra_spots > 0 else 1)
+
+    # 3. 生成额外光斑的位置（全图随机）
+    for _ in range(num_extra_spots):
+        center_x = random.randint(0, width)
+        center_y = random.randint(0, height)
+        spots_to_generate.append({'center_x': center_x, 'center_y': center_y})
+        
+    if not spots_to_generate:
+        return image
+
+    # 4. 为每个待生成的光斑赋予随机的大小和强度
+    cumulative_alpha_mask = np.zeros((height, width), dtype=np.float32)
+    X, Y = np.meshgrid(np.arange(width), np.arange(height))
+    smaller_dim = min(height, width)
+    
+    for spot in spots_to_generate:
+        radius = random.randint(int(smaller_dim * min_radius_ratio), int(smaller_dim * max_radius_ratio))
+        intensity = random.uniform(min_intensity, max_intensity)
+        sigma = radius / 2
+        
+        dist_from_center = np.sqrt((X - spot['center_x'])**2 + (Y - spot['center_y'])**2)
+        gauss_mask = np.exp(-(dist_from_center**2 / (2 * sigma**2)))
+        
+        cumulative_alpha_mask += intensity * gauss_mask
+
+    # 5. 应用最终的累积蒙版到图像上
+    np.clip(cumulative_alpha_mask, 0, 1, out=cumulative_alpha_mask)
+    final_alpha_mask = cumulative_alpha_mask[..., np.newaxis]
+    white_glare_layer = np.ones_like(image, dtype=np.float32) * 255
+    image_float = image.astype(np.float32)
+
+    blended_image_float = image_float * (1 - final_alpha_mask) + white_glare_layer * final_alpha_mask
+    final_image = np.clip(blended_image_float, 0, 255).astype(np.uint8)
+    
+    return final_image
+
+
+if __name__ == '__main__':
+    # ======================= 配置区域 =======================
+    
+    # 1. 输入路径
+    input_image_dir = r"E:\RS_Aircraft_Occlusion_Detection\dataset\val_split\images"
+    input_label_dir = r"E:\RS_Aircraft_Occlusion_Detection\dataset\val_split\labelTxt"
+
+    # 2. 输出路径
+    output_dir = r"E:\RS_Aircraft_Occlusion_Detection\dataset\val_split_with_targeted_glare1\images"
+    
+    # 3. (可选) 控制光斑外观和数量的参数
+    # 除了目标上的一个光斑外，最多再额外添加几个随机光斑
+    MAX_EXTRA_SPOTS = 2  # (总光斑数 = 1 (如果找到飞机) + 0~2个额外光斑)
+
+    # 每个光斑的大小和强度范围
+    MIN_RADIUS_RATIO = 0.05
+    MAX_RADIUS_RATIO = 0.18
+    MIN_INTENSITY = 1.6
+    MAX_INTENSITY = 2.5
+    
+    # =======================================================
+    
+    print(f"图像输入路径: {input_image_dir}")
+    print(f"标签输入路径: {input_label_dir}")
+    print(f"输出路径: {output_dir}")
+
+    os.makedirs(output_dir, exist_ok=True)
+    
+    try:
+        image_files = [f for f in os.listdir(input_image_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+    except FileNotFoundError:
+        print(f"错误：找不到图像输入目录 '{input_image_dir}'。")
+        exit()
+
+    print(f"找到 {len(image_files)} 张图片，开始处理...")
+    
+    for filename in tqdm(image_files, desc="添加定向和随机光斑"):
+        basename = os.path.splitext(filename)[0]
+        image_path = os.path.join(input_image_dir, filename)
+        label_path = os.path.join(input_label_dir, basename + '.txt')
+        output_path = os.path.join(output_dir, filename)
+
+        if os.path.exists(output_path):
+            continue
+            
+        try:
+            # 读取图片和标签
+            image = cv2.imread(image_path)
+            plane_bboxes = parse_label_file_for_planes(label_path)
+            
+            if image is not None:
+                image_with_glares = add_glares_with_targeting(
+                    image,
+                    plane_bboxes,
+                    max_extra_spots=MAX_EXTRA_SPOTS,
+                    min_radius_ratio=MIN_RADIUS_RATIO,
+                    max_radius_ratio=MAX_RADIUS_RATIO,
+                    min_intensity=MIN_INTENSITY,
+                    max_intensity=MAX_INTENSITY
+                )
+                cv2.imwrite(output_path, image_with_glares)
+            else:
+                print(f"\n警告：无法读取文件 {filename}，已跳过。")
+        except Exception as e:
+            print(f"\n处理文件 {filename} 时发生错误: {e}")
+
+    print("\n处理完成！所有带定向光斑的图片已保存到输出文件夹。")

@@ -1,0 +1,8 @@
+# YOLOv8 OBB ÅäÖÃÎÄ¼ş
+
+path: E:/RS_Aircraft_Occlusion_Detection/dataset
+train: train_split_with_targeted_glare1/images
+val: val_split_with_targeted_glare1/images
+nc: 1
+names:
+  - aircraft
