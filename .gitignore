@@ -181,3 +181,5 @@ technical_path_summary.md
 runs/
 yolov8n-obb.pt
 yolo11n.pt
+spot_comparison_output/
+dataset/

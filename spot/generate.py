@@ -4,10 +4,33 @@ import math
 import random # 用于随机化参数
 import os
 from shapely.geometry import Polygon, Point # 导入 Shapely
+import argparse
+from glob import glob
+from tqdm import tqdm
+import json
 
 # =====================
 # 高斯光斑生成与遮挡主流程
 # =====================
+
+# ---------------------------------------------
+# 新增：生成圆形高斯光斑的 mask
+# ---------------------------------------------
+"""
+@param {int} height mask高度
+@param {int} width mask宽度
+@param {float} center_x 高斯中心x
+@param {float} center_y 高斯中心y
+@param {float} sigma 标准差
+@param {float} intensity 峰值强度（可>1）
+@return {np.ndarray} 单通道高斯mask，值域0~1
+"""
+def generate_circular_gaussian_mask(height, width, center_x, center_y, sigma, intensity=1.0):
+    X, Y = np.meshgrid(np.arange(width), np.arange(height))
+    dist_from_center = np.sqrt((X - center_x) ** 2 + (Y - center_y) ** 2)
+    gauss_mask = intensity * np.exp(-(dist_from_center ** 2) / (2 * sigma ** 2))
+    gauss_mask = np.clip(gauss_mask, 0, 1)
+    return gauss_mask.astype(np.float32)
 
 # ---------------------------------------------
 # 生成椭圆高斯光斑的 RGBA 图像
@@ -245,8 +268,9 @@ def apply_occlusion_to_aircraft(image_path, aircraft_obb_coords, ooap_k_sigma=2.
             "aspect_ratio_range": (0.5, 1.5),         # 椭圆长宽比范围
             "min_absolute_sigma": 7.0,                # Sigma 的最小绝对像素值
             "rotation_range_deg": (0, 360),           # 旋转角度范围
-            "amplitude_range": (0.9, 1.0),            # 光斑强度范围
-            "spot_color_rgb": (255, 255, 255)         # 光斑颜色
+            "amplitude_range": (0.1, 0.4),            # 光斑强度范围
+            "spot_color_rgb": (255, 255, 255),        # 光斑颜色
+            "spot_shape": "ellipse"                  # 新增：光斑形状，可选 'ellipse' 或 'circle'
         }
 
     background_img = cv2.imread(image_path)
@@ -290,21 +314,35 @@ def apply_occlusion_to_aircraft(image_path, aircraft_obb_coords, ooap_k_sigma=2.
         return background_img, 0.0
 
     # 5. 生成高斯光斑图像
-    gaussian_spot_img = generate_gaussian_spot(
-        spot_canvas_size_wh=(canvas_w, canvas_h),
-        amplitude=spot_params['amplitude'],
-        sigma_x=spot_params['sigma_x'],
-        sigma_y=spot_params['sigma_y'],
-        rotation_angle_deg=spot_params['rotation_deg'],
-        spot_color_rgb=spot_params['color_rgb']
-    )
-    if gaussian_spot_img is None:
+    if config.get("spot_shape", "ellipse") == "circle":
+        # 圆形高斯光斑（无旋转，sigma_x=sigma_y，忽略rotation）
+        sigma = float(spot_params['sigma_x'])
+        center_x = canvas_w / 2.0
+        center_y = canvas_h / 2.0
+        mask = generate_circular_gaussian_mask(canvas_h, canvas_w, center_x, center_y, sigma, spot_params['amplitude'])
+        # 构造RGBA
+        spot_rgba = np.zeros((canvas_h, canvas_w, 4), dtype=np.uint8)
+        spot_rgba[..., 0] = spot_params['color_rgb'][2]
+        spot_rgba[..., 1] = spot_params['color_rgb'][1]
+        spot_rgba[..., 2] = spot_params['color_rgb'][0]
+        spot_rgba[..., 3] = (mask * 255).astype(np.uint8)
+    else:
+        # 椭圆+旋转
+        spot_rgba = generate_gaussian_spot(
+            spot_canvas_size_wh=(canvas_w, canvas_h),
+            amplitude=spot_params['amplitude'],
+            sigma_x=spot_params['sigma_x'],
+            sigma_y=spot_params['sigma_y'],
+            rotation_angle_deg=spot_params['rotation_deg'],
+            spot_color_rgb=spot_params['color_rgb']
+        )
+    if spot_rgba is None:
         return background_img, 0.0
 
     # 6. 计算光斑在背景图像上的左上角放置位置
     top_left_x = int(round(spot_params['center_x_on_bg'] - canvas_w / 2.0))
     top_left_y = int(round(spot_params['center_y_on_bg'] - canvas_h / 2.0))
-    occluded_image = blend_spot_on_image(background_img, gaussian_spot_img, top_left_x, top_left_y)
+    occluded_image = blend_spot_on_image(background_img, spot_rgba, top_left_x, top_left_y)
 
     # 7. 计算 OOAP
     current_ooap = calculate_ooap(
@@ -318,85 +356,166 @@ def apply_occlusion_to_aircraft(image_path, aircraft_obb_coords, ooap_k_sigma=2.
 # ---------------------------------------------
 # 主流程：为每个飞机目标生成多样化遮挡样本并计算OOAP
 # ---------------------------------------------
-if __name__ == "__main__":
-    # ========== 路径与文件名设置 ==========
-    test_image_folder = "E:/RS_Aircraft_Occlusion_Detection/testimage/"  # 测试图片文件夹
-    test_image_name = "P0000__682__2443___3839.jpg"                      # 测试图片名
-    test_label_name = "P0000__682__2443___3839.txt"                      # 标签文件名
-    test_image_path = os.path.join(test_image_folder, test_image_name)
-    test_label_path = os.path.join(test_image_folder, test_label_name)
-    output_spot_dir = "E:/RS_Aircraft_Occlusion_Detection/spot/"         # 输出文件夹
-    os.makedirs(output_spot_dir, exist_ok=True)
+def main():
+    """
+    主函数，用于解析命令行参数并批量处理整个数据集。
+    """
+    parser = argparse.ArgumentParser(
+        description="批量为遥感图像数据集中的飞机目标添加高斯光斑遮挡。",
+        formatter_class=argparse.RawTextHelpFormatter,
+        epilog="""
+使用示例:
+python spot/generate.py --data-dir E:/datasets/DOTA_planes --output-dir E:/datasets/DOTA_planes_occluded
 
-    # ========== 检查图片和标签文件 ==========
-    if not os.path.exists(test_image_path):
-        print(f"错误：测试图像文件不存在: {test_image_path}")
-        exit()
-    img_for_size = cv2.imread(test_image_path)
-    if img_for_size is None:
-        print(f"错误：无法加载测试图像 {test_image_path}")
-        exit()
-    img_h, img_w = img_for_size.shape[:2]
-
-    # ========== 读取标签并解析飞机OBB ==========
-    aircraft_pixel_obbs = []
-    try:
-        with open(test_label_path, 'r') as f:
-            lines = f.readlines()
-            for line_num, line in enumerate(lines):
-                parts = line.strip().split()
-                if len(parts) == 9:
-                    class_idx = int(parts[0])
-                    if class_idx == 0: # 只处理飞机类别
-                        norm_coords = np.array([float(x) for x in parts[1:]])
-                        pixel_coords = np.zeros_like(norm_coords)
-                        pixel_coords[0::2] = norm_coords[0::2] * img_w
-                        pixel_coords[1::2] = norm_coords[1::2] * img_h
-                        aircraft_pixel_obbs.append(pixel_coords.tolist())
-    except FileNotFoundError:
-        print(f"错误：找不到标签文件 {test_label_path}")
-        exit()
-    except Exception as e:
-        print(f"解析标签文件 {test_label_path} 时出错: {e}")
-        exit()
-
-    if not aircraft_pixel_obbs:
-        print(f"在 {test_label_path} 中没有找到飞机目标的有效标注。")
-        exit()
-
-    print(f"从标签文件中解析得到 {len(aircraft_pixel_obbs)} 个飞机 OBB。")
-
-    K_SIGMA_FOR_OOAP_BOUNDARY = 2.0  # OOAP计算时椭圆边界k倍sigma
+输出目录结构:
+<output-dir>/
+├── images/
+│   └── (与输入结构相同, 存放带遮挡的图片)
+├── labels/
+│   └── (与输入结构相同, 存放复制的原始标签)
+└── occlusions/
+    └── (与输入结构相同, 存放独立的.json遮挡信息文件)
+"""
+    )
+    parser.add_argument('--data-dir', type=str, required=True, help='数据集根目录路径。')
+    parser.add_argument('--output-dir', type=str, required=True, help='处理后图像的输出根目录。')
+    parser.add_argument('--attempts', type=int, default=3, help='为每个飞机目标生成多少个遮挡样本。')
+    args = parser.parse_args()
 
     # ========== 光斑生成参数配置 ==========
     custom_spot_config = {
-        "placement_offset_range_factor": (-0.3, 0.3), # 光斑中心偏移范围
-        "sigma_scale_range": (0.3, 1.0),             # 光斑sigma范围
+        "placement_offset_range_factor": (-0.6, 0.6),
+        "sigma_scale_range": (0.1, 0.4),
         "aspect_ratio_range": (0.4, 1.6),
         "min_absolute_sigma": 8.0,
         "rotation_range_deg": (0, 360),
-        "amplitude_range": (0.95, 1.0),
-        "spot_color_rgb": (255, 255, 255)
+        "amplitude_range": (1.6, 2.5),
+        "spot_color_rgb": (255, 255, 255),
+        "spot_shape": "ellipse"
     }
 
-    # ========== 遍历每个飞机目标，生成多样化遮挡样本 ==========
-    for i, obb_coords_for_one_plane in enumerate(aircraft_pixel_obbs):
-        print(f"\n--- 处理图像 '{test_image_name}' 中的第 {i+1} 个飞机目标 ---")
-        for attempt in range(3): # 每个目标生成3个不同遮挡
-            print(f"  Attempt #{attempt+1}")
-            final_occluded_image, ooap_value = apply_occlusion_to_aircraft(
-                test_image_path,
-                obb_coords_for_one_plane,
-                ooap_k_sigma=K_SIGMA_FOR_OOAP_BOUNDARY,
-                config=custom_spot_config
-            )
-            if final_occluded_image is not None:
-                base_name_no_ext = os.path.splitext(test_image_name)[0]
-                output_filename = os.path.join(output_spot_dir, f"{base_name_no_ext}_obj{i}_att{attempt}_ooap{ooap_value:.1f}.png")
-                cv2.imwrite(output_filename, final_occluded_image)
-                print(f"  计算得到的 OOAP: {ooap_value:.2f}%")
-                print(f"  已生成并保存带有遮挡的图像: {output_filename}")
-            else:
-                print(f"  为第 {i+1} 个目标, 第 {attempt+1} 次尝试应用遮挡失败。")
+    K_SIGMA_FOR_OOAP_BOUNDARY = 1.8
 
-    print(f"\n测试完成。输出图像已保存到 '{output_spot_dir}' 文件夹。")
+    # ========== 查找所有图片文件 ==========
+    print(f"正在从 '{args.data_dir}' 搜索图片...")
+    image_extensions = ["*.jpg", "*.jpeg", "*.png", "*.bmp", "*.tif"]
+    image_paths = []
+    for ext in image_extensions:
+        image_paths.extend(glob(os.path.join(args.data_dir, 'images', '**', ext), recursive=True))
+
+    if not image_paths:
+        print(f"错误: 在 '{os.path.join(args.data_dir, 'images')}' 目录下没有找到任何支持的图片文件。请检查路径和文件格式。")
+        return
+
+    print(f"找到 {len(image_paths)} 张图片。开始批量处理...")
+
+    # ========== 遍历所有图片进行处理 ==========
+    for image_path in tqdm(image_paths, desc="批量处理进度"):
+        try:
+            # --- 1. 构建标签和输出路径 ---
+            base_name = os.path.splitext(os.path.basename(image_path))[0]
+            relative_path = os.path.relpath(os.path.dirname(image_path), os.path.join(args.data_dir, 'images'))
+            
+            label_path = os.path.join(args.data_dir, 'labels', relative_path, f"{base_name}.txt")
+            output_subdir = os.path.join(args.output_dir, 'images', relative_path)
+            os.makedirs(output_subdir, exist_ok=True)
+            
+            # --- 2. 检查文件存在性 ---
+            if not os.path.exists(label_path):
+                tqdm.write(f"警告: 找不到对应的标签文件，跳过: {label_path}")
+                continue
+
+            img_for_size = cv2.imread(image_path)
+            if img_for_size is None:
+                tqdm.write(f"警告: 无法加载图像，跳过: {image_path}")
+                continue
+            img_h, img_w = img_for_size.shape[:2]
+
+            # --- 3. 读取和解析标签 ---
+            aircraft_to_process = []
+            original_label_lines = []
+            try:
+                with open(label_path, 'r') as f:
+                    original_label_lines = f.readlines()
+                    for line_idx, line in enumerate(original_label_lines):
+                        parts = line.strip().split()
+                        # DOTA飞机类别为0
+                        if len(parts) == 9 and int(parts[0]) == 0:
+                            norm_coords = np.array([float(x) for x in parts[1:]])
+                            pixel_coords = np.zeros_like(norm_coords)
+                            pixel_coords[0::2] = norm_coords[0::2] * img_w
+                            pixel_coords[1::2] = norm_coords[1::2] * img_h
+                            aircraft_to_process.append({
+                                'coords': pixel_coords.tolist(),
+                                'line_index': line_idx
+                            })
+            except Exception as e:
+                tqdm.write(f"错误: 读取或解析标签文件 {label_path} 时失败: {e}")
+                continue
+
+            if not aircraft_to_process:
+                tqdm.write(f"信息: 在 {base_name}.txt 中未找到飞机目标，直接复制原图及标签。")
+                # 如果没有飞机，可以选择复制原图和原标签到输出目录
+                output_image_path = os.path.join(output_subdir, os.path.basename(image_path))
+                if not os.path.exists(output_image_path):
+                    cv2.imwrite(output_image_path, img_for_size)
+                
+                output_label_subdir = os.path.join(args.output_dir, 'labels', relative_path)
+                os.makedirs(output_label_subdir, exist_ok=True)
+                output_label_path = os.path.join(output_label_subdir, os.path.basename(label_path))
+                if not os.path.exists(output_label_path):
+                    with open(output_label_path, 'w') as f_out:
+                         f_out.writelines(original_label_lines)
+                continue
+            
+            # --- 4. 为每个飞机目标生成遮挡样本 ---
+            for i, aircraft_data in enumerate(aircraft_to_process):
+                for attempt in range(args.attempts):
+                    final_occluded_image, ooap_value = apply_occlusion_to_aircraft(
+                        image_path,
+                        aircraft_data['coords'],
+                        ooap_k_sigma=K_SIGMA_FOR_OOAP_BOUNDARY,
+                        config=custom_spot_config
+                    )
+                    
+                    if final_occluded_image is not None:
+                        # --- 5. 保存处理后的图像、标签和独立的遮挡度文件 ---
+                        # 构造文件名
+                        file_base_name = f"{base_name}_obj{i}_att{attempt}_ooap{ooap_value:.1f}"
+                        output_image_filename = f"{file_base_name}.png"
+                        output_label_filename = f"{file_base_name}.txt"
+                        output_occlusion_filename = f"{file_base_name}.json" # 使用.json保存遮挡元数据
+
+                        # 保存处理后的图像
+                        output_image_path = os.path.join(output_subdir, output_image_filename)
+                        cv2.imwrite(output_image_path, final_occluded_image)
+
+                        # 复制原始标签文件
+                        output_label_subdir = os.path.join(args.output_dir, 'labels', relative_path)
+                        os.makedirs(output_label_subdir, exist_ok=True)
+                        output_label_path = os.path.join(output_label_subdir, output_label_filename)
+                        with open(output_label_path, 'w') as f:
+                            f.writelines(original_label_lines)
+
+                        # 创建并保存独立的遮挡度文件
+                        output_occlusion_subdir = os.path.join(args.output_dir, 'occlusions', relative_path)
+                        os.makedirs(output_occlusion_subdir, exist_ok=True)
+                        output_occlusion_path = os.path.join(output_occlusion_subdir, output_occlusion_filename)
+                        
+                        occlusion_metadata = {
+                            "occluded_object_line_index": aircraft_data['line_index'],
+                            "ooap_percent": round(ooap_value, 2),
+                            "ooap_normalized": round(ooap_value / 100.0, 6)
+                        }
+
+                        with open(output_occlusion_path, 'w') as f:
+                            json.dump(occlusion_metadata, f, indent=4)
+
+        except Exception as e:
+            tqdm.write(f"错误: 处理文件 {image_path} 时发生异常: {e}")
+
+    print("\n批量处理完成！")
+
+if __name__ == "__main__":
+    main()
+
