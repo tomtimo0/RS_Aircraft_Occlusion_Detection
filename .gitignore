@@ -176,10 +176,13 @@ cython_debug/
 DOTA_for_convert/
 DOTA_devkit/
 yolo_obb_dataset/
+yolo_obb_dataset_original/
 dota_obb_dataset/
+yolo_obb_dataset_1/
 technical_path_summary.md
 runs/
 yolov8n-obb.pt
 yolo11n.pt
 spot_comparison_output/
 dataset/
+best2.pt
