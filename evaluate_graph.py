@@ -162,7 +162,7 @@ else:
     plt.figure(figsize=(12, 7))
     
     # 作为折线图绘制
-    plt.plot(bin_centers, binned_average_confidences, marker='o', linestyle='-', color='red', linewidth=2, label='每个区间的平均置信度')
+    plt.plot(bin_centers, binned_average_confidences, marker='o', linestyle='-', color='red', linewidth=2, label='Average confidence per interval')
     
     # # 可选：作为条形图绘制
     # plt.bar(bin_centers, binned_average_confidences, width=0.08, color='green', alpha=0.7, label='每个区间的平均置信度')
