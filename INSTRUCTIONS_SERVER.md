@@ -16,13 +16,32 @@ python spot/generate.py --data-dir ./yolo_obb_dataset_original --output-dir ./yo
 ### 2. 训练基线模型 (在无遮挡数据集上)
 
 ```bash
-yolo obb train data=./yolo_obb_dataset_original/dota_planes.yaml model=yolov8n-obb.pt epochs=50 imgsz=620 device=0 batch=8 name=dota_plane_baseline
+yolo obb train data=./yolo_obb_dataset_original/dota_planes.yaml model=yolov8n-obb.pt epochs=50 imgsz=620 device=0 batch=16 name=dota_plane_baseline
 ```
 
 ### 3. 训练遮挡模型 (在有遮挡数据集上)
 
 ```bash
-yolo obb train data=./yolo_obb_dataset_occluded/dota_planes.yaml model=yolov8n-obb.pt epochs=50 imgsz=620 device=0 batch=8 name=dota_plane_occluded
+# 在 tmux 或 nohup 中运行!
+yolo detect train \
+    data=/home/matting/RS_Aircraft_Occlusion_Detection/yolo_obb_dataset_occluded/dota_planes.yaml \
+    model=yolov8l-obb.pt \
+    epochs=100 \
+    imgsz=640 \
+    device=0,1,2,3 \
+    batch=128 \
+    workers=32 \
+    amp=True \
+    lr0=0.01 \
+    warmup_epochs=5
+```
+
+```bash
+    # -s 后面是你的会话名字，可以自定义，比如 'yolo_training'
+    tmux new -s yolo_training
+    tmux ls
+    tmux attach -t yolo_training
+    #重新连接到会话里之后，像正常一样用Ctrl + c停止你的程序，然后输入exit或按Ctrl + d即可关闭该tmux会话
 ```
 
 ## 评估流程

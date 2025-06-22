@@ -405,7 +405,7 @@ def apply_random_background_spot(background_img, config):
     top_left_x = int(round(spot_params['center_x_on_bg'] - canvas_w / 2.0))
     top_left_y = int(round(spot_params['center_y_on_bg'] - canvas_h / 2.0))
     occluded_image = blend_spot_on_image(background_img, spot_rgba, top_left_x, top_left_y)
-    
+
     return occluded_image
 
 # ---------------------------------------------
