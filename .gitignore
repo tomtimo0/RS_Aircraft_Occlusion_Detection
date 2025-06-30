@@ -187,3 +187,7 @@ spot_comparison_output/
 dataset/
 best2.pt
 论文/
+report/
+generated_occlusion_samples/
+my_baseline_model.pt
+my_ellipse_spot_model.pt

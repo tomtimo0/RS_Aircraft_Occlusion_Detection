@@ -1,4 +1,10 @@
-# 《模式识别与机器学习》课程设计
+# 《模式识别与机器学习》课程设计 - 项目已完成
+
+**项目状态：** ✅ 已完成
+
+**最终应用：** 最终的应用程序代码已存放于 `APP` 分支，请切换到该分支查看和运行。
+
+---
 
 [课程设计要求、项目详情、考核与报告规范（点击查看）](./project_spec.md)
 
@@ -35,5 +41,3 @@ yolo obb val model=runs/obb/dota_plane_baseline3/weights/best.pt data=E:/RS_Airc
 
 # 4. 基线模型 vs 无遮挡数据 
 yolo obb val model=runs/obb/dota_plane_baseline/weights/best.pt data=E:/RS_Aircraft_Occlusion_Detection/yolo_obb_dataset_original/dota_planes.yaml name=baseline_on_basline
-```
-git clone https://github.com/tomtimo0/RS_Aircraft_Occlusion_Detection.git

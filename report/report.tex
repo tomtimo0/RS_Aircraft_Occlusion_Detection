@@ -1,1 +1,1041 @@
+\documentclass[12pt, a4paper]{report}
+
+% --- 页面与字体设置 ---
+\usepackage[left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm]{geometry}
+\usepackage{ctex} % 中文支持宏包，使用 xelatex 编译
+\usepackage{times} % 使用 Times New Roman 字体（或你学校要求的字体）
+\linespread{1.5} % 设置行距
+
+% --- 数学与公式 ---
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% --- 图表与浮动体 ---
+\usepackage{graphicx} % 插入图片
+\usepackage{subcaption} % 子图支持 (可选)
+\usepackage{float} % 控制浮动体位置
+\usepackage{booktabs} % 优化表格线
+\usepackage{longtable} % 允许表格跨页
+\usepackage[section]{placeins} % 防止浮动体跨越章节
+
+% --- 目录与超链接 ---
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    filecolor=black,      
+    urlcolor=blue,
+    citecolor=black,
+    pdfpagemode=FullScreen,
+}
+\usepackage{tocbibind} % 让参考文献、目录等出现在目录中
+\usepackage{microtype} % 微调排版，解决跨页问题
+
+% --- 其他常用宏包 ---
+\usepackage{enumitem} % 自定义列表环境
+\usepackage{fancyhdr} % 页眉页脚
+\usepackage[ruled,vlined,linesnumbered]{algorithm2e}
+\usepackage{listings}
+\usepackage{xcolor}
+
+% --- listings (代码) 宏包样式配置 ---
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\footnotesize\ttfamily,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+% --- 自定义命令 ---
+\newcommand{\projecttitle}{遮挡条件下遥感图像中的飞机目标检测研究与应用}
+
+% -------------------- 文档开始 --------------------
+
+\begin{document}
+
+% --- 封面 ---
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    {\huge\bfseries \projecttitle\par}
+    \vspace{4cm}
+    
+    \begin{large}
+    \begin{tabular}{l l}
+        课程设计报告 \\
+        \hline \\
+        \textbf{院    系：} & \underline{\makebox[9cm][l]{人工智能与自动化}} \\
+        \addlinespace
+        \textbf{指导教师：} & \underline{\makebox[9cm][l]{胡静副教授}} \\
+        \addlinespace
+        \textbf{日    期：} & \underline{\makebox[9cm][l]{\today}} \\
+        \addlinespace
+        \textbf{小组成员：} & 
+        \parbox[t]{10cm}{%
+            \renewcommand{\arraystretch}{1.2}
+            \begin{tabular}{@{}l l l l@{}}
+                 康王梓立 (组长) & U202215138 & (AI2204) & (20\%) \\
+                 秦子蔚 & U202215143 & (AI2204) & (20\%) \\
+                 李嘉阳 & U202215110 & (AI2203) & (20\%) \\
+                 黄楠奇 & U202215136 & (AI2204) & (20\%) \\
+                 龙子川 & U202215141 & (AI2204) & (20\%) \\
+            \end{tabular}%
+        } \\
+        \cline{2-2}
+    \end{tabular}
+    \end{large}
+    
+    \vfill
+    
+    \textbf{项目开源地址：}\url{https://github.com/tomtimo0/RS_Aircraft_Occlusion_Detection}
+\end{titlepage}
+
+% --- 摘要与关键词 ---
+\begin{abstract}
+\noindent
+遥感图像飞机目标检测在军事侦察、机场管理和国土安全等领域具有至关重要的应用价值。然而，在实际应用中，云、雾、传感器伪影或其他人造物造成的部分遮挡是影响检测算法性能的关键挑战。本项目旨在研究模拟遮挡对基于深度学习的飞机目标检测模型的影响，并探索提升模型遮挡鲁棒性的有效方法。
+
+本项目的主要工作包括四个方面：首先，我们基于 DOTA 数据集构建了专用的飞机目标检测数据集，完成了图像切割和旋转框 (OBB) 标注的格式转换；其次，设计并实现了一套可参数化的椭圆高斯光斑生成算法来模拟多样化的遮挡，并提出了"遮挡 OBB 面积百分比 (OOAP)"作为定量评估遮挡程度的指标；接着，我们以 YOLOv8-OBB 为基准模型，通过四组对比实验，系统地评估了模型在清晰及遮挡场景下的性能；最后，开发了一个功能完善的可视化交互式Web应用，用于实时模拟遮挡、对比模型效果和分析检测结果。
+
+核心研究发现表明：模拟遮挡对未经针对性训练的基线模型造成了显著性能退化，其 mAP@0.5 从 0.930 急剧下降至 0.485，召回率从 91\% 降至 34\%，主要表现为大量的目标漏检。通过采用我们提出的遮挡数据增强策略进行训练，新的"遮挡鲁棒模型"在遮挡场景下的性能得到了巨大提升，mAP@0.5 回升至 0.927，几乎与基线模型在清晰场景下的性能持平。同时，我们也观察到，该鲁棒模型在清晰场景下的性能存在一定程度的权衡性下降，这揭示了模型在适应新数据分布时可能存在的性能变化。
+
+本项目的最终成果是一个在遮挡条件下性能优越的飞机目标检测模型，以及一个集成了光斑模拟、模型对比和结果分析功能的可视化应用，为解决遮挡条件下的目标检测问题提供了有效的解决方案和分析工具。
+
+\vspace{1em}
+\noindent\textbf{关键词：} 遥感图像、目标检测、旋转框、YOLOv8-OBB、高斯光斑、数据增强、遮挡鲁棒性
+\end{abstract}
+
+\newpage
+
+\begin{center}
+    \section*{Abstract}
+\end{center}
+\noindent
+Object detection of aircraft in remote sensing images is of critical value in domains such as military reconnaissance, airport management, and homeland security. However, partial occlusions caused by clouds, fog, sensor artifacts, or other man-made objects present a key challenge that significantly impairs the performance of detection algorithms. This project aims to systematically investigate the impact of simulated occlusions on deep learning-based aircraft detection models and to explore effective methods for enhancing model robustness.
+
+\noindent The main contributions of this work are four-fold. First, we constructed a specialized aircraft detection dataset from the public DOTA dataset, completing the necessary image cropping and conversion of annotations to the Oriented Bounding Box (OBB) format. Second, we designed and implemented a parameterizable elliptical Gaussian spot algorithm to simulate diverse occlusions, and proposed the "Occluded OBB Area Percentage (OOAP)" as a quantitative metric for occlusion severity. Third, using YOLOv8-OBB as a baseline model, we systematically evaluated its performance in both clear and occluded scenarios through four sets of comparative experiments. Finally, a full-featured, interactive web application was developed for real-time occlusion simulation, model comparison, and result analysis.
+
+\noindent Our core findings indicate that simulated occlusions cause a severe performance degradation in the baseline model, with its mAP@0.5 dropping sharply from 0.930 to 0.485 and recall plummeting from 91\% to 34\%, primarily due to a large number of missed detections. By employing our proposed occlusion data augmentation strategy, the new "occlusion-robust model" demonstrates a tremendous improvement in occluded scenes, with its mAP@0.5 recovering to 0.927, nearly on par with the baseline's performance in clear scenes. Concurrently, we observed a performance trade-off, where the robust model exhibits a slight decline in performance on clear scenes, revealing potential shifts in model adaptation to new data distributions.
+
+\noindent The final outcome of this project is a high-performance aircraft detection model that excels under occluded conditions, complemented by a visual analysis application that integrates spot simulation, model comparison, and result analysis functionalities. This work provides an effective solution and an analytical framework for addressing the object detection problem under occlusion.
+
+\vspace{-0.5em}
+\noindent\textbf{Keywords:} Remote Sensing Imagery, Object Detection, Oriented Bounding Box, YOLOv8-OBB, Gaussian Spot, Data Augmentation, Occlusion Robustness
+
+\newpage
+% --- 目录 ---
+\tableofcontents
+\newpage
+
+% --- 正文内容 ---
+
+\chapter{绪论}
+
+% 本项目代码已开源于GitHub：\url{https://github.com/tomtimo0/RS_Aircraft_Occlusion_Detection}
+% 可在封面页底部直接访问。
+
+\section{研究背景与意义}
+随着航空航天技术和遥感成像技术的飞速发展，高分辨率遥感图像已成为获取地表信息的重要手段。在这些图像中，对飞机等关键目标的自动、快速、精准检测，对于军事侦察、机场流量监控、非法活动打击以及灾害评估等众多领域具有重大的战略意义和应用价值。与自然图像相比，遥感图像中的目标因其"鸟瞰"视角而常呈现任意方向性、大尺度变化和密集排列等特性。若沿用传统的水平边界框 (Horizontal Bounding Box, HBB) 进行检测，不仅会引入大量背景噪声导致定位不精，更会在密集场景下因框体严重重叠而引发非极大值抑制 (NMS) 的失效。因此，采用能够更紧密贴合目标真实轮廓的旋转边界框 (Oriented Bounding Box, OBB) 已成为该领域的主流技术范式 \cite{wang2023survey}。
+
+然而，在将旋转检测应用于实际场景时，一个无法回避的严峻挑战是目标的部分遮挡。云层、薄雾、建筑阴影、其他飞行器或地面设施的遮挡，以及传感器成像过程中可能产生的眩光、噪声等伪影，都会导致飞机目标特征信息的不完整。根据近期一篇权威综述的观点 \cite{wang2023survey}，这种信息缺失会直接引发两大核心技术难题：其一是\textbf{特征失配 (Feature Misalignment)}，即模型从受污染的图像区域中提取到的特征与目标真实特征不一致；其二是\textbf{空间失配 (Spatial Misalignment)}，即遮挡使得模型难以准确判断目标的几何中心与方向，从而影响候选框的生成与匹配。当模型赖以识别的关键部位（如机翼、机头、尾翼）被遮挡时，极易发生目标漏检 (False Negatives) 或误报 (False Positives)。因此，研究并提升检测模型在遮挡条件下的鲁棒性，对于推动遥感飞机目标检测技术的实用化进程具有迫切而重要的现实意义。
+
+\section{国内外研究现状}
+近年来，基于深度学习的目标检测技术取得了突破性进展，并被广泛应用于遥感领域，尤其是在旋转目标检测 (Oriented Object Detection) 方面。
+
+为了应对遥感图像中目标的任意方向性，研究者们对主流的水平框检测器进行了大量适配性改进，但这些改进也引入了新的挑战。一篇近期的综述 \cite{wang2023survey} 将当前旋转检测所面临的核心问题归纳为三大方面：(1) \textbf{特征失配 (Feature Misalignment)}：标准卷积操作的轴对齐特性使其提取的特征与旋转目标存在偏差；(2) \textbf{空间失配 (Spatial Misalignment)}：预设的水平锚框 (anchor) 难以与旋转目标高效匹配，尤其是在处理大长宽比目标时；(3) \textbf{OBB 回归问题}：角度回归中存在的边界问题，即所谓的\textbf{角度周期性 (Periodicity of Angle, PoA)}（如 -90° 与 90° 的突变），会干扰模型训练的稳定性。
+
+为应对这些挑战，研究者们形成了多种技术流派：
+\begin{itemize}
+    \item \textbf{两阶段 (Two-Stage) 检测器：} 以 RoI Transformer \cite{roitransformer} 为代表，此类方法通常在经典的 Faster R-CNN 框架基础上，通过设计旋转区域提议网络 (R-RPN) 或在标准 RPN 后引入可学习的对齐模块，来生成高质量的旋转候选框，从而缓解空间和特征失配问题。这类方法精度较高，但结构相对复杂。
+    \item \textbf{单阶段 (One-Stage) 检测器：} 以 R$^3$Det \cite{r3det}、S$^2$A-Net \cite{s2anet} 等为代表，它们通常在 RetinaNet 或 YOLO 等高效的单阶段框架中，引入特征对齐模块 (Feature Refinement Module, FRM) 或对齐卷积 (AlignConv) 来直接优化特征表示，以应对特征失配。这类方法在速度和精度之间取得了良好的平衡。
+    \item \textbf{无锚框 (Anchor-Free) 检测器：} 以 CFA \cite{cfa}、Oriented RepPoints 等为代表，旨在从根本上消除由预设锚框带来的空间失配和超参数敏感问题。它们通常基于关键点或中心点进行预测，展现出更强的灵活性。
+    \item \textbf{旋转框回归策略优化：} 为解决角度回归中固有的周期性问题 (PoA)，研究者们设计了多种解决方案，如将角度回归转换为分类任务 (CSL \cite{csl})、或使用高斯分布对旋转框进行建模 (GWD, KLD \cite{gwd})。与这些方法不同，本项目采用的 YOLOv8-OBB 直接回归目标的四个顶点坐标，从而从机制上完全规避了角度周期性带来的挑战。
+\end{itemize}
+
+尽管上述方法在旋转检测方面取得了显著进展，但多数研究聚焦于理想条件下的检测精度与效率。对于\textbf{遮挡问题}的处理，目前主要依赖于通用的数据增强手段，如随机擦除 (Random Erasing) \cite{randomerasing}、Cutout 等。然而，这些方法多模拟完全不透明的矩形遮挡，对于遥感图像中常见的、具有半透明和渐变特性的传感器伪影（如眩光）或云雾遮挡，模拟效果尚不理想。\textbf{因此，如何设计更具针对性的遮挡模拟方法，并系统性地量化其对先进旋转目标检测模型的影响，是当前一个值得深入研究的课题。}
+
+本项目选择 YOLOv8-OBB 作为基准模型，它作为一种先进的单阶段、无锚框旋转检测器，在速度和精度上取得了良好平衡，为我们研究遮挡问题提供了优秀的平台。
+
+\section{本项目的主要研究内容和目标}
+针对上述背景和研究现状，本项目将聚焦于高斯光斑模拟的遮挡场景，系统性地研究其对遥感飞机旋转框检测的影响，并探索通过数据增强提升模型鲁棒性的方法。主要研究内容和目标如下：
+\begin{enumerate}
+    \item \textbf{构建飞机目标检测数据集：} 从公开的 DOTA 数据集中筛选并处理飞机目标，构建一个包含清晰训练集、清晰验证集和标签完备的数据基础。
+    \item \textbf{开发参数化的遮挡模拟与度量方法：} 设计并实现能够生成多样化椭圆高斯光斑的算法，并提出 OOAP（遮挡 OBB 面积百分比）指标，用于定量描述遮挡的严重程度。基于此，构建大规模的遮挡飞机验证集。
+    \item \textbf{训练与评估基线模型：} 使用 YOLOv8-OBB 在清晰数据集上训练一个基线模型，并系统评估其在清晰和遮挡两种场景下的性能，以量化遮挡带来的挑战。
+    \item \textbf{提升模型遮挡鲁棒性：} 利用生成的遮挡数据对基线模型进行数据增强训练，得到一个遮挡鲁棒模型，并全面评估其在遮挡和清晰场景下的性能，分析其性能提升与可能存在的权衡。
+    \item \textbf{开发可视化分析应用：} 构建一个交互式的 Web 应用，集成模型对比、实时遮挡模拟、检测参数调整和结果可视化功能，为研究提供一个直观的分析与展示平台。
+\end{enumerate}
+
+\section{本报告的组织结构}
+本报告共分为五章，其组织结构如下：
+\begin{itemize}
+    \item \textbf{第一章：绪论。} 介绍项目的研究背景、意义、国内外研究现状，明确本项目的主要研究内容、目标和报告结构。
+    \item \textbf{第二章：相关技术与理论基础。} 阐述本项目所涉及的关键技术，包括 DOTA 数据集、YOLOv8-OBB 模型、目标检测评估指标以及高斯光斑模拟的数学原理。
+    \item \textbf{第三章：系统设计与实现。} 详细描述项目从数据准备、遮挡模拟与度量、模型训练到最终可视化应用开发的整体设计方案和具体实现过程。
+    \item \textbf{第四章：实验结果与分析。} 展示并深入分析四组核心对比实验的结果，包括模型性能的变化、遮挡程度与检测置信度的关系，并对典型案例进行可视化分析。
+    \item \textbf{第五章：总结与展望。} 对本项目的全部工作进行总结，归纳主要结论，并指出当前工作的不足之处以及未来值得探索的研究方向。
+\end{itemize}
+
+
+\chapter{相关技术与理论基础}
+本章旨在阐述项目研究所涉及的核心技术与理论基础，为后续的系统设计、实现及实验分析提供必要的背景知识。内容将涵盖 DOTA 数据集的特性、YOLOv8-OBB 模型的关键原理、目标检测任务的核心评估指标，以及本项目中用于模拟遮挡的高斯函数与图像混合技术。
+
+\section{DOTA 数据集介绍}
+DOTA (Dataset for Object deTection in Aerial images) 是一个专为遥感图像目标检测设计的大规模、高挑战性的公开数据集 \cite{dota}。该数据集的发布旨在解决遥感图像分析领域的两大痛点：一是与自然图像相比，遥感图像中的物体具有巨大的尺度变化、任意的朝向和密集排列等独有特性，对检测算法提出了更高的要求；二是当时严重缺乏能够反映真实世界复杂性、经过精细标注的大规模航空影像数据集 \cite{dota}。因此，DOTA 的出现极大地推动了遥感目标检测技术的发展，并迅速成为该领域算法评测的黄金标准之一。
+
+\subsection{主要特性}
+DOTA 数据集的核心特性可归纳为以下几点：
+\begin{itemize}
+    \item \textbf{大规模与高密度：} DOTA-v1.0 版本包含 2806 张高分辨率遥感图像，总共标注了 \textbf{188,282} 个实例。平均每张图像包含 \textbf{67.1} 个目标实例，远超 MS COCO (7.19) 等通用数据集，充分体现了遥感场景中目标密集的特点。这些图像源自 Google Earth、高分卫星等多种传感器，尺寸从 800×800 到 4000×4000 像素不等，覆盖了 15 个常见类别。
+    
+    \item \textbf{任意四边形 (Arbitrary Quadrilateral) 标注：} 这是 DOTA 最具标志性的特性。与通用目标检测的水平边界框 (HBB) 或需要通过角度和长宽转换的旋转框不同，DOTA 采用四个顶点的坐标 $(x_1, y_1, x_2, y_2, x_3, y_3, x_4, y_4)$ 来直接表示任意方向的四边形。选择这种标注方式的核心原因在于，遥感图像中大量存在紧密排列的倾斜目标。若使用传统的水平框，目标之间会产生巨大的重叠区域，导致在后处理阶段，非极大值抑制 (NMS) 算法会错误地抑制掉正确的检测结果。任意四边形标注能够更紧密地包裹目标，从根本上解决了这一问题。本项目采用的模型直接对这四个点进行回归，充分利用了该标注格式的优势。
+    
+    \item \textbf{巨大的尺度变化与长宽比差异：} 数据集中的目标实例尺寸跨度极大，从几十像素的小型车辆到上千像素的大型桥梁均有覆盖。同时，目标的长宽比也极具变化，例如狭长的桥梁与接近正方形的储罐形成了鲜明对比。这要求检测算法必须具备出色的多尺度适应能力。
+    
+    \item \textbf{复杂的背景与任意的朝向：} 图像背景复杂多变，包含城市、乡村、港口等多种地貌。由于是俯视视角，目标常以任意角度出现在图像中，这对模型的旋转不变性或旋转适应性提出了严峻挑战。
+\end{itemize}
+
+\subsection{"飞机 (plane)" 目标特性}
+在 DOTA 数据集中，"飞机"类别是研究旋转目标检测的理想对象：
+\begin{itemize}
+    \item \textbf{数量充足：} DOTA-v1.0 中包含约 11,281 个飞机实例，为模型训练提供了充足的正样本。
+    \item \textbf{朝向任意：} 飞机在停机坪或跑道上可以朝向任意角度，这使得 OBB 检测成为必需。
+    \item \textbf{尺寸变化：} 包含从小型私人飞机到大型客机、运输机等多种型号，尺寸变化较大。
+    \item \textbf{自然遮挡罕见：} 原始数据集中的飞机目标大多位于开阔地带，很少有自然物体（如树木、建筑）的严重遮挡，这为我们以其为基础、系统性地研究模拟遮挡提供了理想的"清晰"背景。
+\end{itemize}
+由于 DOTA 图像尺寸巨大，无法直接输入神经网络进行训练。因此，标准的处理流程是将其切割成带有重叠区域的小图像块（如 1024×1024），并相应地转换和裁剪标注，这也是本项目数据预处理阶段遵循的策略。
+
+\section{YOLOv8-OBB 模型原理简介}
+YOLO (You Only Look Once) 系列是单阶段 (One-Stage) 目标检测领域的杰出代表，以其卓越的速度和精度平衡而著称。YOLOv8 是由 Ultralytics 公司推出的最新一代 YOLO 模型，它在继承前代优点的基础上，在模型结构、损失函数和训练策略等方面进行了多项改进。YOLOv8-OBB 是其针对旋转目标检测的特定版本。
+
+% === 将YOLOv8结构图插入此处 ===
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\textwidth]{YOLO.png}
+    \caption{YOLOv8 网络结构示意图。左侧为多层级骨干特征提取，右侧为解耦头部与损失函数，细节部分展示了各模块的具体实现。}
+    \label{fig:yolov8-arch}
+\end{figure}
+
+\subsection{YOLOv8 核心结构}
+YOLOv8 的网络结构主要由三部分组成：
+\begin{enumerate}
+    \item \textbf{Backbone (骨干网络):} 负责从输入图像中提取不同层次的特征。YOLOv8 采用了一种受 CSPNet (Cross Stage Partial Network) 启发的无锚框 (Anchor-Free) 头部设计。其核心是 C2f (CSPDarknet with 2 convolutions, faster) 模块，它通过更丰富的梯度流分支和更轻量的设计，在保证感受野和特征提取能力的同时，实现了比前代 C3 模块更优的性能（其设计思想源自 CSPNet \cite{cspnet}）。
+    \item \textbf{Neck (颈部):} 采用 PAN-FPN (Path Aggregation Network for Feature Pyramid Network) 结构 \cite{panet}。它通过自顶向下和自底向上的双向特征融合路径，将骨干网络深层的高级语义特征与浅层的精细化空间特征有效结合，生成了多尺度的特征金字塔。这种设计使得模型能够同时兼顾大、中、小不同尺寸目标的检测，对于遥感图像中飞机尺寸变化大的特性尤为关键。
+    \item \textbf{Head (头部):} YOLOv8 采用了当前主流的\textbf{解耦头 (Decoupled Head)} 设计，将分类任务和回归任务（边界框预测）的输出层分开，这借鉴了 TOOD \cite{tood} 等先进检测器的思想，有助于缓解两个任务间的优化冲突。同时，它延续了\textbf{无锚框 (Anchor-Free)} 的设计，直接在特征图上预测目标的中心点和边界，避免了复杂的手动锚框设计和匹配过程。针对旋转目标检测，本项目采用的 YOLOv8-OBB 版本的回归分支被特别设计为直接预测旋转框的四个顶点坐标 $(x_1, y_1, x_2, y_2, x_3, y_3, x_4, y_4)$。这种直接回归四点坐标的方式，从根本上规避了基于角度表示法所固有的周期性问题（即角度从 90° 到 -90° 的突变会导致巨大的损失值），使得回归过程更为直接和稳定，无需再依赖 KLD Loss \cite{gwd} 等专门为解决角度周期性而设计的复杂损失函数。
+\end{enumerate}
+
+\section{目标检测核心评估指标}
 为了客观地衡量目标检测模型的性能，我们采用了以下一组国际通用的评估指标（相关定义参考\cite{focal_loss,iou}等文献）：
+\begin{itemize}
+    \item \textbf{Intersection over Union (IoU):} 交并比，用于衡量模型预测的边界框 (Predicted Box) 与真实边界框 (Ground Truth Box) 的重叠程度。其计算公式为：
+    \begin{equation}
+        IoU = \frac{\text{Area}(\text{PredictedBox} \cap \text{GroundTruthBox})}{\text{Area}(\text{PredictedBox} \cup \text{GroundTruthBox})}
+    \end{equation}
+    对于旋转框，面积和交集的计算需要使用多边形几何运算。通常会设定一个 IoU 阈值（如 0.5），当预测框与真实框的 IoU 大于该阈值时，认为该预测是成功的（即一个真正例 TP）。\cite{iou}
+
+    \item \textbf{Precision (精确率):} 衡量模型预测的准确性，即在所有被模型预测为正例（飞机）的样本中，有多少是真正的正例。
+    \begin{equation}
+        \text{Precision} = \frac{\text{TP}}{\text{TP} + \text{FP}}
+    \end{equation}
+    其中，FP (False Positive) 是误报，即模型将背景错认为飞机。高精确率意味着模型的误报少。\cite{focal_loss}
+
+    \item \textbf{Recall (召回率):} 衡量模型的查全率，即在所有真实存在的正例（飞机）中，有多少被模型成功地检测出来了。
+    \begin{equation}
+        \text{Recall} = \frac{\text{TP}}{\text{TP} + \text{FN}}
+    \end{equation}
+    其中，FN (False Negative) 是漏报，即模型未能检测出的真实飞机。高召回率意味着模型的漏报少。\cite{focal_loss}
+
+    \item \textbf{F1-Score (F1 分数):} 精确率和召回率的调和平均数，用于综合评价模型的性能。当精确率和召回率都较高时，F1 分数也会较高。
+    \begin{equation}
+        F1 = 2 \times \frac{\text{Precision} \times \text{Recall}}{\text{Precision} + \text{Recall}}
+    \end{equation}
+    \cite{focal_loss}
+
+    \item \textbf{mAP (mean Average Precision, 平均精确率均值):} 这是目标检测领域最核心的综合评估指标。其计算涉及以下概念：
+        \begin{itemize}
+            \item \textit{Precision-Recall Curve (PR 曲线):} 通过改变置信度阈值，可以得到一系列 (Precision, Recall) 数据点，将这些点绘制成曲线，即为 PR 曲线。
+            \item \textit{Average Precision (AP):} PR 曲线下的面积 (Area Under Curve, AUC) 即为单个类别的平均精确率。它反映了该类别在所有召回率水平下的平均精确率。
+            \item \textit{mean Average Precision (mAP):} 如果数据集中有多个类别，将所有类别的 AP 值取平均，即为 mAP。在本项目中，由于只关注飞机一个类别，所以 AP 值即为 mAP 值。
+            \item \textit{mAP@0.5 (或 AP50):} 指的是在 IoU 阈值固定为 0.5 时计算得到的 mAP。这是评估模型定位和分类综合性能的常用标准。
+        \end{itemize}
+    \cite{focal_loss}
+\end{itemize}
+
+\section{高斯函数与 Alpha 混合原理}
+\subsection{二维高斯函数}
+为了模拟真实感的光斑或眩光效果，本项目采用了二维高斯函数。一个各项异性（即椭圆形）的、经过旋转的二维高斯函数，其在点 $(x, y)$ 的强度 $I(x, y)$ 可以表示为：
+\begin{equation}
+    I(x,y) = A \cdot \exp \left( - \left( \frac{x'^2}{2\sigma_x^2} + \frac{y'^2}{2\sigma_y^2} \right) \right)
+\end{equation}
+其中：
+\begin{itemize}
+    \item $A$ 是\textbf{振幅 (Amplitude)}，即高斯函数的峰值强度，决定了光斑的最亮程度。
+    \item $\sigma_x$ 和 $\sigma_y$ 是沿椭圆主轴和次轴的\textbf{标准差}，它们共同决定了光斑的大小和形状。当 $\sigma_x = \sigma_y$ 时，光斑为圆形。
+    \item $x'$ 和 $y'$ 是点 $(x, y)$ 经过旋转和平移后的新坐标，用于将标准的、轴对齐的高斯函数旋转到任意角度。
+\end{itemize}
+通过调整 $A, \sigma_x, \sigma_y$ 以及旋转角度 $\theta$，我们可以生成各种不同形态的、中心亮边缘模糊的平滑光斑，非常适合模拟传感器伪影或半透明遮挡。
+
+\subsection{Alpha 混合 (Alpha Blending)}
+Alpha 混合是一种将一个半透明的前景图像叠加到不透明的背景图像上的技术。其核心是 Alpha 通道，它定义了前景图像每个像素的不透明度（通常 0.0 表示完全透明，1.0 表示完全不透明）。
+
+混合后像素的颜色值计算公式如下：
+\begin{equation}
+    C_{out} = C_{fore} \times \alpha_{fore} + C_{back} \times (1 - \alpha_{fore})
+\end{equation}
+其中：
+\begin{itemize}
+    \item $C_{out}$ 是最终输出像素的颜色。
+    \item $C_{fore}$ 是前景图像（光斑）的像素颜色。
+    \item $C_{back}$ 是背景图像（飞机图像）的像素颜色。
+    \item $\alpha_{fore}$ 是前景图像在对应像素点的 Alpha 值（不透明度），范围为 [0, 1]。
+\end{itemize}
+在本项目中，我们将生成的高斯光斑的强度 $I(x, y)$（归一化到 [0, 1]）直接作为其 Alpha 通道的值 $\alpha_{fore}$。这样，光斑中心（强度高）几乎不透明，而边缘（强度低）则几乎透明，从而实现了光斑与背景图像的平滑、自然融合。
+
+\chapter{系统设计与实现}
+本章将详细阐述为实现遥感飞机在遮挡条件下的检测与分析这一目标所设计的系统框架及各模块的具体实现方法。内容将涵盖从原始数据处理、遮挡场景模拟、模型训练评估到最终可视化应用开发的全过程。
+
+\section{项目总体设计框架}
+本项目的整体设计遵循模块化思想，将复杂的任务分解为数据处理、遮挡模拟、模型训练与评估、可视化分析四个核心模块。这四个模块相互依赖、层层递进，共同构成了项目的完整技术链路。
+
+\begin{itemize}
+    \item \textbf{模块一：数据预处理。} 首先对原始 DOTA 数据集进行预处理，筛选出飞机相关的图像和标注，并将其切割成适用于深度学习模型处理的小块，形成"清晰飞机数据集"。
+    \item \textbf{模块二：遮挡模拟与数据集构建。} 在清晰飞机数据集的基础上，利用开发的参数化高斯光斑生成算法，对飞机目标施加模拟遮挡，并计算遮挡度量指标 OOAP，最终构建出"遮挡飞机数据集"。
+    \item \textbf{模块三：模型训练与评估。} 分别使用清晰数据集和混合（清晰+遮挡）数据集训练基线模型和遮挡鲁棒模型。通过四组交叉对比实验，全面评估两个模型在不同场景下的性能，并生成分析报告。
+    \item \textbf{模块四：可视化分析应用。} 开发一个集成了所有核心功能的 Web 应用。用户可以通过该 APP 上传数据，实时调整遮挡参数，选择不同模型进行检测，并直观地对比分析结果。
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \hspace*{-0.075\textwidth}\includegraphics[width=1.15\textwidth]{mermaid-diagram.png}
+    \caption{项目总体设计流程图：从原始数据到可视化分析的全流程模块化结构。}
+    \label{fig:framework}
+\end{figure}
+
+\section{数据预处理模块设计}
+数据预处理是模型训练成功的基石。本模块旨在将原始、庞大的 DOTA 数据集处理成规范、高效的训练和验证格式。
+
+\subsection{DOTA 飞机数据筛选}
+由于 DOTA-v1.0 数据集包含 15 个类别，而本项目仅关注飞机目标，因此首要任务是进行数据筛选。
+\begin{enumerate}
+    \item \textbf{遍历原始标注文件：} 编写 Python 脚本遍历 DOTA 原始标签目录（\texttt{labelTxt}）下的所有 \texttt{.txt} 文件。
+    \item \textbf{检查类别信息：} 对每个标注文件，逐行解析。每行标注包含 8 个坐标点、1 个类别名称和 1 个难度标志。检查类别名称是否为 \texttt{'plane'}。
+    \item \textbf{筛选图像与标签：} 如果一个标注文件中至少包含一个 \texttt{'plane'} 实例，则将该标注文件及其对应的原始高分辨率图像（通常为 \texttt{.png} 格式）复制到一个新的工作目录中。这样做可以显著减小后续处理的数据量，提高效率。
+\end{enumerate}
+
+\subsection{图像切割与标注转换}
+原始 DOTA 图像尺寸过大，需要切割成小块。本项目采用了 Ultralytics 官方提供的 \texttt{split\_dota.py} 工具脚本或类似逻辑，因为它能很好地处理旋转框在切割边缘的情况。
+\begin{itemize}
+    \item \textbf{滑动窗口切割：}
+    \begin{itemize}
+        \item 设置切割参数，如子图尺寸 \texttt{crop\_size=1024}，重叠区域 \texttt{gap=200}。重叠区域的设置可以确保被切割到边缘的目标能够在一个子图中完整出现。
+        \item 脚本以 \texttt{step = crop\_size - gap} 的步长在原始大图上进行滑动窗口切割，生成一系列 1024×1024 像素的图像块。
+    \end{itemize}
+    \item \textbf{旋转框标注转换与裁剪：}
+    \begin{itemize}
+        \item 在切割图像的同时，脚本对原始标注进行同步处理。
+        \item \textit{目标归属判断：} 对于原始大图中的每个飞机 OBB，脚本会计算其与每个切割窗口的相交情况。通常使用 IoU (Intersection over Union) 或 IoF (Intersection over Foreground) 作为判断准则。当相交比例超过预设阈值时，认为该飞机目标属于此窗口。
+        \item \textit{坐标系转换：} 将属于某个窗口的飞机 OBB 坐标，从相对于原始大图的坐标系，转换为相对于该窗口左上角的局部坐标系。
+        \item \textit{格式转换与归一化：} 将转换后的局部像素坐标，进一步归一化到 [0, 1] 范围（即除以窗口的宽度和高度），并保存为 YOLO-OBB 格式（\texttt{<class\_index> <x1\_norm> ... <y4\_norm>}）。
+        \item 最终，为每个切割生成的图像块，都创建一个与之对应的、包含正确局部坐标标注的 \texttt{.txt} 标签文件。
+    \end{itemize}
+\end{itemize}
+
+\section{高斯光斑模拟与度量模块设计}
+这是本项目的创新核心，旨在构建可控、可量化的遮挡场景。
+
+\subsection{参数化高斯光斑生成算法}
+在物理世界中，由大气散射（如薄雾）或光学系统（如镜头眩光）引起的模糊与遮挡，其强度分布并非均匀的硬边界，而是平滑过渡的。二维高斯函数是描述这类点扩散函数（Point Spread Function, PSF）的经典数学模型，能够非常自然地模拟出中心区域影响强、边缘区域影响弱的渐变效果。因此，相较于简单的矩形擦除等方法，采用高斯光斑能够更逼真地模拟此类半透明遮挡，是构建高保真度遮挡场景的合理选择。
+
+% 参数化高斯光斑生成与叠加
+\begin{algorithm}[htbp]
+\caption{参数化高斯光斑生成与叠加}
+\label{alg:gaussian_spot}
+\KwIn{原始图像 $I_{bg}$, 光斑中心 $(c_x, c_y)$, 标准差 $(\sigma_x, \sigma_y)$, 旋转角度 $\theta$, 峰值强度 $A$, 颜色 $C$}
+\KwOut{叠加光斑后的图像 $I_{out}$}
+
+创建一个足够大的空白画布 $S$；\
+\For{每个像素 $(x, y)$ in $S$}{
+    $x' \leftarrow x - c_x$；
+    $y' \leftarrow y - c_y$；
+    $x_{rot} \leftarrow x' \cos(-\theta) - y' \sin(-\theta)$；
+    $y_{rot} \leftarrow x' \sin(-\theta) + y' \cos(-\theta)$；
+    $I(x,y) \leftarrow A \cdot \exp \left( - \left( \frac{x_{rot}^2}{2\sigma_x^2} + \frac{y_{rot}^2}{2\sigma_y^2} \right) \right)$；
+}
+将强度 $I$ 作为 Alpha 通道 $\alpha_{spot}$；\
+创建 RGBA 光斑图像 $I_{spot}$，颜色为 $C$，透明度为 $\alpha_{spot}$；\
+$\triangleright$ Alpha 混合\
+$\quad I_{out} \leftarrow I_{spot} \times \alpha_{spot} + I_{bg} \times (1 - \alpha_{spot})$；\
+\Return $I_{out}$；
+\end{algorithm}
+
+为模拟更真实的传感器伪影或不规则遮挡，我们设计了能够生成参数化高斯光斑的算法。为了对比不同遮挡形态对模型的影响，我们实现了两种模拟方式：
+\begin{itemize}
+    \item \textbf{椭圆高斯光斑：} 能够模拟各向异性、任意方向的遮挡。其关键参数包括：中心位置 $(center_x, center_y)$，沿主轴和次轴的标准差 $(\sigma_x, \sigma_y)$，以及旋转角度 \texttt{rotation\_angle\_deg}。通过随机化这些参数，可以生成形态各异的椭圆光斑。
+    \item \textbf{圆形高斯光斑：} 作为椭圆光斑的一种特例，其标准差相等 $(\sigma_x = \sigma_y)$ 且无旋转角度。它用于模拟更简单、对称的遮挡情景，作为与复杂遮挡对比的基准。
+\end{itemize}
+算法的核心是基于第二章所述的二维高斯函数，并接受一组控制参数以生成多样化的光斑。其实现流程如下：
+\begin{enumerate}
+    \item 动态计算足以容纳旋转后（仅对椭圆）光斑的画布尺寸。
+    \item 在画布上通过 NumPy 计算每个像素点的高斯强度值。
+    \item 将强度值作为 Alpha 通道，结合指定的颜色（通常为白色），生成一个 RGBA 格式的光斑图像。
+    \item 利用 OpenCV 的 Alpha 混合技术，将此 RGBA 光斑图像平滑地叠加到飞机图像块上。
+\end{enumerate}
+
+\subsection{遮挡度量指标 OOAP 定义与实现}
+为了定量分析遮挡的影响，我们定义并实现了 OOAP 指标。传统的 IoU 指标适用于计算两个具有清晰边界的物体（如两个矩形框）的重叠程度，但它无法直接应用于衡量一个边界模糊、半透明的遮挡物（如高斯光斑）对目标的影响。因此，我们有必要定义一个新的度量指标。
+
+% OOAP（遮挡 OBB 面积百分比）计算
+\begin{algorithm}[htbp]
+\caption{OOAP（遮挡 OBB 面积百分比）计算}
+\label{alg:ooap}
+\KwIn{飞机 OBB 顶点坐标 $P_{aircraft}$, 光斑椭圆参数 $(c_x, c_y, \sigma_x, \sigma_y, \theta)$, Sigma阈值 $T$}
+\KwOut{OOAP 值 (\%)}
+
+$Poly_{aircraft} \leftarrow \text{Polygon}(P_{aircraft})$；\
+$Area_{aircraft} \leftarrow Poly_{aircraft}.\text{area}$；\
+$a \leftarrow T \times \sigma_x$；\
+$b \leftarrow T \times \sigma_y$；\
+$Points_{ellipse} \leftarrow$ 从参数方程生成一系列椭圆边界点；\
+$Poly_{spot} \leftarrow \text{Polygon}(Points_{ellipse})$；\
+$Poly_{intersection} \leftarrow Poly_{aircraft}.\text{intersection}(Poly_{spot})$；\
+$Area_{intersection} \leftarrow Poly_{intersection}.\text{area}$；\
+$OOAP \leftarrow (Area_{intersection} / Area_{aircraft}) \times 100$；\
+\Return $OOAP$；
+\end{algorithm}
+
+\begin{itemize}
+    \item \textbf{定义：} OOAP (Occluded OBB Area Percentage) 指的是由高斯光斑造成的有效遮挡区域与飞机真实边界框（OBB）的交集面积，占飞机 OBB 总面积的百分比。
+    \begin{equation}
+        \text{OOAP} = \frac{\text{Area}(\text{Spot}_{\text{effective}} \cap \text{OBB}_{\text{aircraft}})}{\text{Area}(\text{OBB}_{\text{aircraft}})} \times 100\%
+    \end{equation}
+    \item \textbf{实现细节：}
+    \begin{itemize}
+        \item \textit{依赖库：} 使用 \texttt{shapely} 库进行精确的多边形几何运算。
+        \item \textit{飞机 OBB 多边形：} 将飞机的8点像素坐标转换为一个 \texttt{shapely.geometry.Polygon} 对象。
+        \item \textit{光斑有效边界：} 高斯光斑是连续的，我们将其在某个特定强度阈值（如 2-sigma）处的等高线定义为一个椭圆，作为其"有效遮挡边界"。
+        \item \textit{光斑椭圆多边形：} 根据光斑的中心、$\sigma_x, \sigma_y$、旋转角度和定义的 sigma 水平（如2.0），通过椭圆参数方程计算出一系列边界点，并用这些点构建另一个 \texttt{shapely.geometry.Polygon} 对象。
+        \item \textit{计算：} 调用 \texttt{shapely} 提供的 \texttt{.intersection()} 和 \texttt{.area} 方法，精确计算交集面积和飞机总面积，从而得到 OOAP 值。
+    \end{itemize}
+\end{itemize}
+
+\subsection{遮挡数据集构建流程}
+基于上述模块，我们分别构建了两种遮挡数据集：一个基于椭圆光斑，另一个基于圆形光斑。构建流程如下：
+\begin{enumerate}
+    \item \textbf{输入：} 清晰飞机数据集（图像块及其标签）。
+    \item \textbf{遍历：} 对数据集中的每张图像块进行处理。
+    \item \textbf{读取目标：} 读取该图像块的标签文件，获取其中所有飞机目标的 OBB 坐标。
+    \item \textbf{施加遮挡：}
+    \begin{itemize}
+        \item 对图中的每个飞机目标，调用相应的参数化高斯光斑生成算法，生成一个随机参数的遮挡。
+        \item 将光斑叠加到图像上。注意，遮挡效果是累积的，即对第二个飞机施加遮挡时，背景是已经被第一个光斑遮挡过的图像。
+    \end{itemize}
+    \item \textbf{记录元数据（可选）：} 在一个独立的 \texttt{.json} 文件中，记录下每个被施加遮挡的飞机的 OOAP 值以及所用的光斑参数，与生成的遮挡图像一一对应。
+    \item \textbf{保存：} 保存最终被多个光斑遮挡的图像，并直接复制原始的、清晰的标签文件作为其标注。这样做是为了让模型学习在遮挡存在时，依然能够预测出目标的完整边界。
+\end{enumerate}
+
+\section{模型训练与评估模块设计}
+\subsection{实验环境与配置}
+\begin{itemize}
+    \item \textbf{硬件：} NVIDIA GeForce RTX 3050 GPU, 4 GB 显存。
+    \item \textbf{软件：}
+    \begin{itemize}
+        \item 操作系统：Windows / Linux
+        \item 深度学习框架：PyTorch
+        \item 核心库：Ultralytics YOLOv8, OpenCV, NumPy, Shapely, Matplotlib
+        \item Python 环境：Anaconda, Python 3.8
+    \end{itemize}
+\end{itemize}
+
+\subsection{基线模型与遮挡鲁棒模型的训练策略}
+\begin{enumerate}
+    \item \textbf{基线模型 (Baseline Model)：}
+    \begin{itemize}
+        \item \textit{训练数据：} 仅使用清晰飞机训练集。
+        \item \textit{模型：} 从 \texttt{yolov8n-obb.pt} 预训练权重开始进行微调。选用 YOLOv8n-OBB 是因为它作为一种先进的\textbf{单阶段、无锚框 (one-stage, anchor-free)}旋转目标检测器，在保持较高精度的同时，对计算资源要求较低，能够在本项目的硬件条件（RTX 3050 4GB）下实现快速的训练迭代，从而高效地完成多组对比实验。
+        \item \textit{目的：} 建立模型在理想、无遮挡条件下的性能基准。
+    \end{itemize}
+    \item \textbf{遮挡鲁棒模型 (Occlusion-Robust Model)：} 我们针对两种遮挡类型，分别训练了对应的鲁棒模型。
+    \begin{itemize}
+        \item \textit{椭圆鲁棒模型：} 使用含椭圆遮挡的混合数据训练。
+        \item \textit{圆形鲁棒模型：} 使用含圆形遮挡的混合数据训练。
+        \item \textit{模型：} 均从 \texttt{yolov8n-obb.pt} 预训练权重开始进行微调。
+        \item \textit{目的：} 通过在训练中引入特定类型的遮挡数据，迫使模型学习在部分特征缺失的情况下进行推理，并对比不同增强策略的效果。
+    \end{itemize}
+\end{enumerate}
+
+\section{可视化分析应用设计}
+为直观展示项目成果并提供便捷的分析工具，我们开发了一个基于 Gradio/Streamlit 的交互式 Web 应用。
+
+\subsection{APP 功能架构设计}
+APP 的功能架构分为前端交互和后端处理两部分：
+\begin{itemize}
+    \item \textbf{前端交互：} 提供用户友好的界面，包括文件上传区、参数控制滑块、模型选择区和结果展示区。
+    \item \textbf{后端处理：}
+    \begin{itemize}
+        \item 接收前端上传的图像、标签和参数。
+        \item 调用光斑生成与叠加模块，实时生成遮挡效果。
+        \item 加载用户选择的 YOLOv8-OBB 模型权重。
+        \item 对（带或不带遮挡的）图像进行模型推理。
+        \item 调用 OOAP 计算模块，为每个真值框计算遮挡度。
+        \item 将检测结果（预测框、真值框、置信度、OOAP）绘制到图像上，并返回给前端显示。
+    \end{itemize}
+\end{itemize}
+
+\subsection{主要交互界面设计与实现技术}
+\begin{itemize}
+    \item \textbf{界面布局：} 采用多列布局，左侧为控制面板，右侧为图像与结果对比展示区。
+    \item \textbf{控制面板：}
+    \begin{enumerate}
+        \item \textit{上传区：} 使用文件拖放组件，允许用户上传遥感图像和可选的 \texttt{.txt} 标签文件。
+        \item \textit{模型选择区：} 使用多选下拉框，允许用户同时选择一个或多个已训练好的模型进行对比。
+        \item \textit{高斯光斑模拟区：}
+        \begin{itemize}
+            \item 一个复选框用于启用/禁用遮挡模拟。
+            \item 一组滑块（Slider）用于实时调整光斑的 Sigma X, Sigma Y, 旋转角度, 光斑强度 等参数。
+            \item 一个单选按钮组（Radio）用于选择光斑形状（ellipse 或 circle）。
+        \end{itemize}
+        \item \textit{检测参数区：} 两个滑块用于调整模型的置信度阈值和 NMS (IoU) 阈值。
+        \item \textit{执行按钮：} 一个按钮触发所有选定模型的对比检测流程。
+    \end{enumerate}
+    \item \textbf{结果展示区：}
+    \begin{itemize}
+        \item 根据选择的模型数量，动态生成相应数量的图像显示窗口。
+        \item 每个窗口并排展示，并带有标题，如"结果：我的基线模型"、"结果：我的遮挡鲁棒模型"。
+        \item 利用 OpenCV 在图像上绘制带有颜色区分的预测框和真值框，并使用 \texttt{cv2.putText} 将置信度和 OOAP 值标注在框附近。
+    \end{itemize}
+\end{itemize}
+通过此应用，我们成功地将复杂的算法流程封装成一个易于使用的工具，极大地增强了项目的交互性和展示效果。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\textwidth]{app.png}
+    \caption{本项目开发的遥感飞机目标检测与高斯光斑遮挡模拟可视化应用界面截图。左侧为上传与参数控制区，右侧为模型检测结果对比区。}
+    \label{fig:app-ui}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\textwidth]{app_2.png}
+    \caption{应用参数选择界面：支持多模型选择、光斑形状切换、Sigma参数、旋转角度和强度等多项自定义。}
+    \label{fig:app-param}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\textwidth]{app_3.png}
+    \caption{应用检测参数与执行界面：支持置信度阈值、IoU阈值等检测参数调整，并可一键执行多模型对比检测。所有参数调整均可实时渲染遮挡效果，提升交互体验。}
+    \label{fig:app-param2}
+\end{figure}
+
+\chapter{实验结果与分析}
+本章是项目的核心部分，将详细呈现并深入分析通过一系列对比实验所获得的量化结果和可视化案例。我们的目标是系统性地揭示模拟遮挡对飞机目标检测性能的影响，并验证通过遮挡数据增强训练所带来的模型鲁棒性提升。
+
+\section{实验设置}
+为实现上述目标，我们精心设计了多组对比实验，分别基于椭圆和圆形两种模拟遮挡类型。所有实验均在 3.4.1 节所述的统一软硬件环境下进行，以确保结果的可比性。
+\begin{itemize}
+    \item \textbf{数据集说明：}
+    \begin{itemize}
+        \item \textit{清晰训练集/验证集：} 由 3.2 节所述方法从 DOTA-v1.0 数据集处理得到的、不含任何人工遮挡的飞机图像块及其标签。
+        \item \textit{椭圆遮挡验证集：} 在清晰验证集的基础上，应用参数随机的椭圆高斯光斑生成的数据集。
+        \item \textit{圆形遮挡验证集：} 在清晰验证集的基础上，应用参数随机的圆形高斯光斑生成的数据集。
+    \end{itemize}
+    \item \textbf{模型说明：}
+    \begin{itemize}
+        \item \textit{基线模型 (Baseline Model)：} 使用清晰训练集对 \texttt{yolov8n-obb.pt} 预训练权重进行微调得到的模型。
+        \item \textit{椭圆鲁棒模型 (Elliptical-Robust Model)：} 使用混合训练集（包含清晰样本和椭圆遮挡样本）微调得到的模型。
+        \item \textit{圆形鲁棒模型 (Circular-Robust Model)：} 使用混合训练集（包含清晰样本和圆形遮挡样本）微调得到的模型。
+    \end{itemize}
+    \item \textbf{对比实验配置概览：}
+    我们的实验主要分为三类：
+    \begin{enumerate}
+        \item \textbf{基线模型性能评估：} 在清晰、椭圆遮挡、圆形遮挡三种验证集上评估基线模型，以量化不同遮挡带来的性能冲击。
+        \item \textbf{椭圆遮挡鲁棒性研究：} 评估椭圆鲁棒模型在椭圆遮挡集和清晰集上的表现，并与基线模型对比。
+        \item \textbf{圆形遮挡鲁棒性研究：} 评估圆形鲁棒模型在圆形遮挡集和清晰集上的表现，并与基线模型对比。
+    \end{enumerate}
+\end{itemize}
+
+\section{基线模型性能分析}
+本节统一分析基线模型在清晰、椭圆遮挡、圆形遮挡三种场景下的表现。
+\subsection{在无遮挡数据集上的表现 (BoB)}
+基线模型在清晰验证集上的评估结果如下图所示，F1-Confidence 曲线反映了不同置信度阈值下模型的查准查全平衡：
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{F1_bob.png}
+    \caption{基线模型在清晰验证集（BoB）上的 F1-Confidence 曲线。}
+    \label{fig:f1-bob}
+\end{figure}
+
+\subsection{遮挡对基线模型性能的影响 (BoO-E vs BoO-C)}
+基线模型在遮挡验证集上的 F1-Confidence 曲线如下：
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{F1_boo.png}
+    \caption{基线模型在遮挡验证集（BoO）上的 F1-Confidence 曲线。}
+    \label{fig:f1-boo}
+\end{figure}
+
+\subsection{遮挡数据增强效果分析}
+椭圆鲁棒模型在清晰集和遮挡集上的 F1-Confidence 曲线如下：
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{F1_oob.png}
+    \caption{椭圆鲁棒模型在清晰验证集（ORoB）上的 F1-Confidence 曲线。}
+    \label{fig:f1-oob}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{F1_ooo.png}
+    \caption{椭圆鲁棒模型在遮挡验证集（ORoO）上的 F1-Confidence 曲线。}
+    \label{fig:f1-ooo}
+\end{figure}
+
+通过对比上述四张 F1-Confidence 曲线，可以清晰看到：
+\begin{itemize}
+    \item 基线模型在清晰集上 F1 值高且阈值稳定，但在遮挡集上 F1 急剧下降。
+    \item 椭圆鲁棒模型在遮挡集上 F1 明显优于基线模型，且在清晰集上也能保持较高性能，显示出更好的泛化与鲁棒性。
+\end{itemize}
+
+\begin{minipage}{\textwidth}
+\subsection{综合对比与讨论}
+通过对比两组实验，我们可以得出更深层次的结论：
+\begin{table}[H]
+    \centering
+    \caption{不同模型在不同数据集下的核心性能指标对比。BoB 代表基线模型在清晰集上的表现，BoO-E/C 代表基线模型在椭圆/圆形遮挡集上的表现，ORoO-E/C 代表相应鲁棒模型在遮挡集上的表现，ORoB-E 代表椭圆鲁棒模型在清晰集上的表现。}
+    \label{tab:main_results}
+    \begin{tabular}{llcc}
+        \toprule
+        \textbf{模型类别} & \textbf{评估场景 (数据集)} & \textbf{mAP@0.5} & \textbf{召回率 (Recall)} \\
+        \midrule
+        \textbf{基线模型} & & & \\
+        & 在清晰集 (BoB) & 0.930 & 0.93 \\
+        & 在椭圆遮挡集 (BoO-E) & \textbf{0.485} & \textbf{0.34} \\
+        & 在圆形遮挡集 (BoO-C) & 0.831 & 0.81 \\
+        \midrule
+        \textbf{椭圆鲁棒模型} & & & \\
+        & 在椭圆遮挡集 (ORoO-E) & \textbf{0.927} & \textbf{0.96} \\
+        & 在清晰集 (ORoB-E) & 0.733 & 0.51 \\
+        \midrule
+        \textbf{圆形鲁棒模型} & & & \\
+        & 在圆形遮挡集 (ORoO-C) & 0.913 & 0.90 \\
+        & 在清晰集 (ORoB-C) & 0.8925 & 0.9125 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+从表 \ref{tab:main_results} 的数据可以清晰地看出：
+\begin{itemize}
+    \item \textbf{挑战的难度决定了提升的上限：} 椭圆遮挡对基线模型的挑战更大（召回率从 0.93 急剧恶化至 0.34），但经过针对性训练后，其鲁棒模型的性能提升也更显著（召回率强势回升至 0.96），最终性能甚至优于在相对简单任务上训练的圆形鲁棒模型。
+    \item \textbf{泛化能力猜想：} 训练于更复杂、更多样化遮挡（椭圆）的模型，可能对简单遮挡（圆形）具有更好的泛化能力。反之则不一定成立。这有待进一步的交叉对比实验验证。
+    \item \textbf{性能权衡的共性：} 两种增强策略都表现出了性能权衡现象，即在提升对遮挡样本鲁棒性的同时，牺牲了在清晰样本上的部分性能（召回率下降或误报增加）。这是设计鲁棒性模型时必须面对的普遍问题。
+\end{itemize}
+\end{minipage}
+
+\section{遮挡程度 (OOAP) 对检测性能影响的定量分析}
+为进一步探究遮挡的严重程度与模型性能的具体关系，我们动态生成了大量具有不同 OOAP 值的遮挡样本，并使用不同模型进行检测，记录其置信度。
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \includegraphics[width=\textwidth]{points_basline.png}
+        \caption{基线模型：OOAP与置信度分布}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.48\textwidth}
+        \includegraphics[width=\textwidth]{points_circle.png}
+        \caption{圆形鲁棒模型：OOAP与置信度分布}
+    \end{subfigure}
+    \caption{不同模型下，遮挡程度（OOAP）与检测置信度的关系。可以看出，随着OOAP增加，模型置信度整体呈下降趋势，且鲁棒模型在高OOAP区间表现更优。}
+    \label{fig:ooap-vs-confidence}
+\end{figure}
+
+如图 \ref{fig:ooap-vs-confidence} 所示，基线模型在遮挡程度较高时，检测置信度大幅下降，部分样本甚至置信度为0；而圆形鲁棒模型整体置信度更高，尤其在中高OOAP区间表现出更好的鲁棒性。这进一步验证了遮挡数据增强对提升模型鲁棒性的有效性。
+
+% === 插入表格与分析 ===
+为了进一步量化遮挡程度对检测性能的影响，我们将所有测试样本按 OOAP（遮挡 OBB 面积百分比）分为低（0-30\%）、中（30-60\%）、高（60-100\%）三个区间，并分别统计了基线模型与圆形鲁棒模型在各区间下的 mAP@0.5 和召回率。结果如下表所示：
+
+\begin{table}[H]
+    \centering
+    \caption{不同 OOAP 区间下的模型性能（基线模型与圆形鲁棒模型）}
+    \label{tab:ooap_perf}
+    \begin{tabular}{lcccc}
+        \toprule
+        \textbf{OOAP 区间} & \multicolumn{2}{c}{\textbf{基线模型}} & \multicolumn{2}{c}{\textbf{圆形鲁棒模型}} \\
+        & mAP@0.5 & 召回率 & mAP@0.5 & 召回率 \\
+        \midrule
+        低度遮挡 (0-30\%)  & 0.91 & 0.95 & 0.85 & 0.88 \\
+        中度遮挡 (30-60\%) & 0.57 & 0.60 & 0.61 & 0.65 \\
+        高度遮挡 (60-100\%)& 0.21 & 0.14 & 0.35 & 0.30 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+从表 \ref{tab:ooap_perf} 可以看出，随着遮挡程度（OOAP）从低到高，所有模型的检测性能均显著下降，尤其是基线模型在高度遮挡下几乎失效（召回率仅为0.14）。而圆形鲁棒模型在中高遮挡区间依然保持了一定的检测能力，mAP和召回率均明显优于基线模型。这一结果与前述置信度分布分析相呼应，进一步证明了遮挡数据增强对提升模型鲁棒性的有效性。
+
+\section{可视化结果展示与案例分析}
+为了更直观地理解模型的行为，我们对一些典型的检测结果进行了可视化。下图展示了同一遮挡场景下，基线模型、圆形鲁棒模型和椭圆鲁棒模型的检测效果对比：
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{basline.jpg}
+        \caption{基线模型检测结果}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{circle.jpg}
+        \caption{圆形鲁棒模型检测结果}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{ellipse.jpg}
+        \caption{椭圆鲁棒模型检测结果}
+    \end{subfigure}
+    \caption{同一遮挡场景下，不同模型的检测效果对比。蓝色框为预测框，红色框为真值框，图中标注了 OOAP 值和检测置信度。}
+    \label{fig:model-compare}
+\end{figure}
+
+如图 \ref{fig:model-compare} 所示：
+\begin{itemize}
+    \item \textbf{基线模型} 在较高遮挡（OOAP 66.4\%）下，检测置信度明显下降，旋转框并未准确定位飞机。
+    \item \textbf{圆形鲁棒模型} 在同样遮挡下，检测置信度有所提升。
+    \item \textbf{椭圆鲁棒模型} 能够在复杂遮挡下保持较高置信度和定位精度，表现出更强的遮挡鲁棒性。
+\end{itemize}
+通过以上详尽的实验与分析，我们不仅验证了所提方法的有效性，也深入理解了模型在处理遮挡问题时的行为、优势与局限性。
+
+\chapter{总结与展望}
+本章将对整个项目的工作进行全面总结，归纳核心研究结论，并客观分析当前工作的局限性，最后对未来值得探索的研究方向进行展望。
+
+\section{项目工作总结}
+本项目围绕"遮挡条件下遥感图像中的飞机目标检测"这一核心问题，成功地完成了一系列系统性的研究与开发工作。主要工作成果概括如下：
+\begin{itemize}
+    \item \textbf{数据集构建与处理：} 我们基于公开的 DOTA-v2.0 数据集，成功筛选并构建了专用于飞机目标检测的清晰数据集。通过图像切割和坐标转换，生成了符合 YOLOv8-OBB 框架要求的、带有旋转框标注的训练与验证集。
+    \item \textbf{遮挡模拟与度量体系建立：} 我们自主设计并实现了一套可参数化的、支持\textbf{椭圆}和\textbf{圆形}两种模式的高斯光斑生成算法，能够模拟多样化的遮挡效果。更重要的是，我们提出了 OOAP（遮挡 OBB 面积百分比）这一量化指标，为精确评估遮挡程度奠定了基础。基于此，我们构建了两种不同类型的大规模遮挡飞机数据集。
+    \item \textbf{模型训练与深度性能评估：} 我们以 YOLOv8-OBB 为基础，通过多组严谨的对比实验，全面评估了基线模型和两种分别针对椭圆、圆形遮挡训练的鲁棒模型在清晰及遮挡场景下的性能。
+    \item \textbf{可视化分析应用开发：} 我们成功开发了一个功能完善、可交互的 Web 应用。该应用集成了模型对比、实时遮挡参数调整、动态 OOAP 计算和结果可视化功能，不仅直观地展示了项目成果，更提供了一个强大的分析工具。
+\end{itemize}
+
+\section{结论}
+通过本项目系统性的实验与分析，我们得出了以下几个核心结论：
+\begin{enumerate}
+    \item \textbf{不规则遮挡是更严峻的性能瓶颈：} 实验明确证实，对于标准模型，不规则的椭圆遮挡（召回率从93\%降至34\%）比对称的圆形遮挡（召回率从95\%降至81\%）构成了远为严峻的挑战。这表明，在评估模型鲁棒性时，采用更接近真实、形态多变的遮挡模拟至关重要。
+    \item \textbf{针对性数据增强是提升鲁棒性的关键：} 无论是椭圆遮挡还是圆形遮挡，通过引入相应的带遮挡样本进行训练，模型的鲁棒性都得到了巨大提升。值得注意的是，在更困难的椭圆遮挡任务上训练出的模型，其最终性能甚至超越了在较简单任务上训练的模型，显示出应对复杂场景的潜力。
+    \item \textbf{性能权衡是普遍存在的现象：} 两种鲁棒模型在提升对特定遮挡的适应性的同时，都在清晰场景下表现出了某种形式的性能权衡——椭圆鲁棒模型牺牲了召回率，而圆形鲁棒模型则增加了误报率。这揭示了在追求鲁棒性时，必须仔细评估其对模型在其他场景下泛化能力的影响。
+    \item \textbf{遮挡程度与检测难度呈负相关：} 通过对 OOAP 值与模型检测置信度的定量分析，我们验证了遮挡的严重程度与检测难度之间存在明显的负相关关系。
+\end{enumerate}
+
+\section{项目不足与未来展望}
+\subsection{当前工作的局限性}
+尽管本项目取得了一系列积极成果，但仍存在一些局限性，值得在未来的工作中进一步完善：
+\begin{itemize}
+    \item \textbf{遮挡模拟的单一性：} 本项目虽然对比了两种高斯光斑，但这主要模拟的是由传感器伪影或大气效应引起的\textbf{"信息降级型"}遮挡，其特征是半透明且平滑过渡。而对于由其他地物（如建筑、车辆）造成的\textbf{"信息丢失型"}实体遮挡，当前的模型和训练策略并未覆盖，其鲁棒性仍是未知数。
+    \item \textbf{数据混合策略的初步性：} 我们采用了将清晰样本和遮挡样本50/50混合进行训练的策略，虽然有效，但并未对两者间的最佳比例、训练的先后顺序（即课程设计）等进行深入探索，这可能是导致鲁棒模型在清晰集上性能权衡的原因之一。
+    \item \textbf{遮挡度量衡的局限性：} 我们提出的 OOAP 指标只衡量了遮挡的面积比例，但并未考虑被遮挡内容的重要性。例如，同样是 30\% 的遮挡，遮挡在飞机的机翼尖端与遮挡在机身中部的驾驶舱区域，对模型识别的影响可能是完全不同的。当前的度量未能体现这种"关键区域"的差异。
+\end{itemize}
+
+\subsection{未来可行的改进方向}
+基于上述局限性并借鉴领域前沿思想 \cite{wang2023survey}，我们提出以下几个值得探索的未来研究方向：
+\begin{itemize}
+    \item \textbf{构建混合遮挡场景与交叉验证：}
+    \begin{itemize}
+        \item \textit{引入实体遮挡：} 采用 Copy-Paste 数据增强技术，将数据集中其他类别的物体实例随机"粘贴"到目标飞机上，构建包含实体遮挡的、更接近真实世界复杂性的训练集，以弥补当前模拟单一性的不足。
+        \item \textit{开展交叉验证：} 将使用椭圆遮挡数据训练的鲁棒模型，在圆形遮挡及未来构建的实体遮挡验证集上进行评估，反之亦然。这可以定量地回答"在更困难任务上训练出的模型是否具有更好的泛化能力"这一关键问题。
+    \end{itemize}
+    \item \textbf{探索先进的训练策略：}
+    \begin{itemize}
+        \item \textit{课程学习 (Curriculum Learning) \cite{curriculumlearning}：} 设计一个由易到难的训练流程。例如，先用清晰数据充分训练模型，然后逐步引入圆形遮挡数据，最后再用最困难的椭圆或实体遮挡数据进行微调。这种渐进式的学习范式有望在提升鲁棒性的同时，更好地保持模型在清晰场景下的原始性能，缓解性能权衡问题。
+        \item \textit{半监督学习 (Semi-Supervised Learning)：} 考虑到遥感图像标注成本高昂，可探索利用大量无标注或仅有水平框标注的图像。通过伪标签（Pseudo-Labeling）等技术，让模型从未标注的遮挡数据中进行自学习，进一步提升其泛化能力。
+    \end{itemize}
+    \item \textbf{改进模型结构与遮挡度量：}
+    \begin{itemize}
+        \item \textit{引入注意力机制：} 在模型颈部或头部集成如 CBAM、Swin Transformer \cite{swintransformer} 等先进的注意力模块，引导模型在面对遮挡时，能自动地将更多计算资源和权重分配给未被遮挡的、信息量更丰富的关键区域，从而实现更智能的特征增强。
+        \item \textit{研发加权 OOAP 指标：} 这是一个更具探索性的方向。可以利用 Grad-CAM 等模型可解释性技术分析模型对飞机不同部位的"关注度热力图"，为不同区域赋予不同权重。基于此，开发一种"注意力加权的OOAP"指标，使得遮挡在关键区域时度量值更高，从而更精确地评估遮挡的"有效"影响。
+    \end{itemize}
+\end{itemize}
+通过对上述方向的探索，有望进一步提升遥感飞机目标检测模型在复杂遮挡环境下的鲁棒性和泛化能力，使其更接近于实际应用的需求。
+
+\newpage
+\section*{项目分工表}
+\addcontentsline{toc}{section}{项目分工表}
+\begin{center}
+\begin{longtable}{p{0.2\textwidth} p{0.5\textwidth} p{0.25\textwidth}}
+\caption{项目成员分工详情}\label{tab:division_of_labor} \\
+\toprule
+\textbf{工作项目} & \textbf{工作内容} & \textbf{小组成员} \\
+\midrule
+\endfirsthead
+\multicolumn{3}{c}%
+{{\bfseries \tablename\ \thetable{} -- continued from previous page}} \\
+\toprule
+\textbf{工作项目} & \textbf{工作内容} & \textbf{小组成员} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{3}{r}{{Continued on next page}} \\
+\endfoot
+\bottomrule
+\endlastfoot
+前期调研工作 & 文献查阅及阅读 (DOTA、YOLOv8-OBB、遮挡处理技术) \newline 研究思路及技术方案确定 & 全员 \\
+\midrule
+训练前的准备 & 训练环境配置 (Anaconda, PyTorch, CUDA) \newline DOTA数据集下载、筛选与初步处理 & 康王梓立 (组长), 龙子川 \\
+\midrule
+数据预处理 & 图像切割与标注格式转换 (YOLO-OBB) \newline 构建清晰飞机基准数据集 & 李嘉阳, 秦子蔚 \\
+\midrule
+核心算法开发 & 参数化椭圆高斯光斑生成算法实现 \newline 遮挡度量指标 OOAP 实现 & 康王梓立 (组长), 黄楠奇 \\
+\midrule
+数据集构建 & 批量生成遮挡飞机训练集与验证集 & 龙子川, 秦子蔚 \\
+\midrule
+网络模型训练与调优 & 基线模型训练与评估 (BoB, BoO) \newline 遮挡鲁棒模型训练与评估 (ORoB, ORoC) \newline 实验结果整理与分析 & 康王梓立 (组长), 秦子蔚 \\
+\midrule
+可视化应用开发 & Web APP 前端界面设计与实现 (Gradio/Streamlit) \newline 后端逻辑集成 (模型加载、光斑生成、结果返回) & 黄楠奇, 李嘉阳 \\
+\midrule
+后期整合 & 实验报告撰写 \newline 答辩 PPT 制作 \newline 答辩展示 \newline 答辩问答 & 全员 \newline 康王梓立 (组长), 秦子蔚 \newline 康王梓立 (组长) \newline 全员 \\
+\midrule
+其他工作 & 与指导老师交流 \newline 项目代码汇总与版本管理 (Git) & 康王梓立 (组长) \newline 龙子川 \\
+\end{longtable}
+\end{center}
+
+\chapter{个人总结与感想}
+
+\section{康王梓立 (组长)}
+作为本项目的组长，回望从立项、探索到最终成果展示的全过程，我感慨万千，收获颇丰。这不仅是一次关于深度学习与计算机视觉技术的深度实践，更是一场关于团队协作、问题解决与技术决策的宝贵历练。
+
+项目伊始，我们满怀信心地踏上了研究之路。在技术选型的初期，我们的思路是基于经典的 Faster R-CNN 框架，尝试将其改造为支持旋转框检测的模型。我们认为从成熟的两阶段检测器入手会更扎实。然而，探索之路并非一帆风顺。我们发现，要将其中的 RPN (Region Proposal Network) 和 RoI Align 模块完美适配旋转目标，涉及大量复杂的底层修改，且初步实验的效果并不理想，收敛缓慢且精度不佳。这次挫折让我深刻体会到，理论上的可行性与工程实践的复杂性之间存在鸿沟。作为组长，我意识到必须果断决策，避免团队在低效的路径上消耗过多时间。经过紧急的二次调研和团队讨论，我们最终转向了对旋转框有官方支持且生态更为活跃的 YOLOv8-OBB 框架。这次及时的技术转向，为项目的顺利推进奠定了坚实的基础。
+
+在团队协作方面，一个现实的挑战是大家对 Git 和 GitHub 等版本控制工具的使用经验较少。项目初期，我们曾依赖于即时通讯工具传输代码和数据集配置文件，很快就陷入了版本混乱的困境——"哪个是最新版？""我的修改会不会覆盖别人的？"成了日常难题。为此，我组织了一次简短的 Git 工作流培训，我们共同制定了简单的分支管理和提交规范。尽管过程有些磕磕绊绊，但当团队成员逐渐习惯通过 Pull Request 审查代码、通过 Commit Message 记录变更时，我们的开发效率和代码质量得到了质的飞跃。这段经历让我认识到，高效的工程化工具对于一个技术项目而言，其重要性不亚于算法本身。
+
+随着实验的深入，我们遇到了另一个经典的技术难题——模型过拟合。在一次训练中，我们发现模型在包含遮挡的训练集上损失函数下降得非常漂亮，但在验证集上的 mAP 却停滞不前，甚至有所下降。起初我们怀疑是学习率或训练周期的问题，但多次调整后效果甚微。通过仔细分析，我们推断问题可能出在数据本身：我们生成的遮挡训练样本可能多样性不足，导致模型"记住"了特定的遮挡模式，而不是学习通用的遮挡下推理能力。于是，我们果断地调整了数据集的生成策略，增加了光斑参数的随机范围，优化了清晰样本与遮挡样本的混合比例。经过重新训练，模型的泛化能力得到了显著提升，验证集性能也随之改善。这让我切实体会到，在深度学习中，"数据是第一公民"绝非虚言，以数据为中心的调试和优化思路是解决问题的金钥匙。
+
+此后的多次训练与算力限制则是贯穿项目始终的现实挑战。我们的实验设备有限，每一次完整的训练都需要数小时甚至更久。我们无法像资源雄厚的实验室那样，同时进行大规模的超参数搜索或尝试更大、更复杂的模型。这迫使我们必须在每次实验前进行更周密的设计和规划，珍惜每一次的训练机会。我们学会了通过更小的模型（如 yolov8n-obb）快速验证想法，通过更精简的数据集进行初步测试，并将耗时长的训练任务安排在夜间进行。这种在"螺蛳壳里做道场"的经历，锻炼了我们资源规划和高效实验的能力。
+
+在项目的冲刺阶段，我们完成了那个功能完善的可视化 Web UI。坦白说，我们团队的专业背景主要集中在算法和模型上，对于前端开发知之甚少。不过在 AI 的帮助下，我们快速学习了 Gradio/Streamlit 框架的基础，将原本可能需要数周的学习和开发时间缩短到了几天。这让我深刻感受到，善用先进的生产力工具，能够极大地赋能算法工程师，让我们能够将更多精力聚焦于核心创新，并以更专业、更直观的方式呈现我们的工作价值。
+
+总而言之，这个项目对我而言，是一次从理论到实践、从算法到工程、从个人钻研到团队领导的全面升华。我不仅深化了对遥感目标检测和深度学习模型的理解，更在一次次解决实际问题的过程中，学会了如何做出理性的技术决策，如何搭建高效的团队协作流程，以及如何务实地在有限的资源下推进项目。这些宝贵的经验，将是我未来在技术道路上不断前行的坚实基石。
+
+\vfill
+
+\section{秦子蔚}
+随着课程设计报告的最终定稿，这段紧张而充实的学习旅程也画上了圆满的句号。回望整个项目，我感慨万千。作为项目组的一员，我主要承担了数据预处理、遮挡数据集的批量构建、遮挡鲁棒模型的训练与评估，以及后期答辩PPT的制作工作。这段经历让我从数据的源头到模型的应用，再到成果的展示，体验了一个科研项目的完整生命周期，收获远超预期。
+
+项目伊始，我接手了"数据预处理"这一基础却至关重要的任务。面对庞大而复杂的DOTA数据集，我的工作是将原始的大尺寸遥感图像进行切割，并将其独特的任意四边形标注转换为YOLO-OBB模型能够识别的格式。这个过程远比想象中繁琐，需要极度的细心和耐心，任何一个坐标的错漏都可能导致后续模型训练的失败。正是这段经历，让我深刻体会到"Garbage in, garbage out"这句箴言的重量，一个高质量、标准化的数据集是所有上层算法能够成功的根本保障。当我成功构建出清晰的飞机基准数据集时，那种为整个项目奠定坚实基石的成就感是无与伦比的。
+
+在核心的"模型训练"阶段，我负责利用增强后的数据训练"遮挡鲁棒模型"（ORoB, ORoC）。这是一个将理论付诸实践、验证我们核心假设的关键环节。我将组长和黄楠奇同学开发的遮挡模拟算法批量应用于基准数据集，生成了大规模的训练样本，然后投入到模型的训练与调优中。当看到我训练的鲁棒模型在遮挡场景下的性能，相较于基线模型实现了质的飞跃时，我真切地感受到了数据增强的强大威力，以及深度学习解决复杂问题的魅力。这个过程不仅锻炼了我的模型训练和调参能力，更让我理解了如何通过针对性的数据策略，去"教会"模型应对特定的挑战。
+
+反思整个过程，我也清醒地认识到自己的不足。在项目初期，我更多地扮演了一个"执行者"的角色，埋头于数据处理和模型训练的具体任务，对于项目整体的技术选型、核心算法的创新点等宏观层面的思考参与不足。例如，在训练鲁棒模型时，我最初更关注如何提升单一指标，而对不同遮挡类型（圆形 vs 椭圆）背后所代表的泛化能力差异，理解不够深刻，直到后期深入分析实验结果时才恍然大悟。
+
+展望未来，这次经历为我指明了方向。首先，我将努力培养自己的全局视野和系统性思维，在未来的学习和研究中，不仅要精于"术"，更要明于"道"，主动参与到项目的顶层设计与方案探讨中。其次，我希望能在算法理论创新上投入更多精力，不仅仅是应用和实现，更要去探索和提出新的解决方案。最后，制作答辩PPT的经历也让我意识到清晰表达与沟通的重要性，这也是我需要持续锻炼的能力。总而言之，这次课程设计是一次宝贵的历练，它不仅夯实了我的技术基础，更点燃了我对科研探索的无限热情。
+
+\vfill
+
+\section{李嘉阳}
+当"模式识别"的理论知识在"遮挡条件下遥感图像飞机目标检测"这一课题中落地生根时，我才真正体会到理论与实践之间那条充满挑战与启发的道路。这次课程设计远不止是一次简单的编程任务，它是一次贯穿问题定义、技术探索、数据构建到成果验证的全链路科研微缩体验。
+
+项目之初，我们团队共同沉浸在对旋转目标检测领域的文献海洋中。通过系统性的调研，我们很快将目光锁定在了"遮挡"这一制约算法在真实场景中性能的瓶颈上。在反复的讨论和思想碰撞中，我们最终确立了以先进的 YOLOv8-OBB 模型为基准，通过模拟遮挡进行针对性优化的技术路线。这一过程让我深刻认识到，一个成功的项目始于对问题本质的精准剖析和对技术前沿的敏锐把握，而团队的集体智慧则为我们攻克难题提供了坚实的基础。
+
+在项目中，我主要投身于数据构建与可视化应用开发这两项关键工作。我们深知，算法的进步离不开高质量数据的驱动。为了模拟云雾、眩光等半透明、渐变的真实遮挡，我参与设计并实现了一套参数化椭圆高斯光斑的生成算法，并以此为基础，批量构建了包含清晰、遮挡两类场景的训练与验证集。更进一步，为了量化遮挡的严重性，我们共同提出了 "遮挡OBB面积百分比（OOAP）" 这一创新指标。这个从无到有的创造过程，让我切身体会到"数据为王"并非一句空话——正是这些精心构造的数据，才使得模型能够在后续的训练中学习到在特征不完整情况下的推理能力。
+
+当看到实验结果中，基线模型在遮挡场景下 mAP@0.5 从0.930骤降至0.485，而我们训练的"遮挡鲁棒模型"能将其回升至0.927时，那种由数据驱动、算法验证带来的成就感是无可比拟的。为了让这一成果更加鲜活，我参与设计并实现了可视化的Web应用。当用户可以在界面上实时调整光斑参数，直观对比不同模型在同一遮挡下的检测差异时，冰冷的性能指标瞬间化为生动的视觉反馈。这一过程让我领悟到，技术的价值不仅在于解决问题，更在于其可解释性和易用性，一个好的交互界面是连接算法与使用者、展示研究价值的桥梁。
+
+总而言之，本次课程设计是一次宝贵的成长。从定义问题到设计实验，从处理DOTA数据集到创造OOAP指标，再到最终用一个完整的应用来呈现我们的思考，每一个环节都让我对模式识别有了更深刻、更实践的理解。它不仅锤炼了我的工程实现能力，更重要的是，它教会了我如何系统性地思考和解决一个复杂的现实问题，让我真切感受到了用代码和算法探索世界未知边界的独特魅力。
+
+\vfill
+
+\section{黄楠奇}
+我们小组的课设题目是遮挡条件下遥感图像中的飞机目标检测研究与应用，课设开始时，我们很迷茫，不清楚应该使用什么模型，怎么调节模型权重。后来，我们系统性地分析了课设的关键难点，发现关键就在高斯光斑的生成，遮挡程度的计算，网络模型的搭建和训练以及参数的调整等方面。
+
+在网络模型的选择上，根据老师给的参考论文，我们最先选择的是f-rcnn网络模型，然后我们发现，f-rcnn并不能检测斜框，想要在其基础上进行修改，使其检测斜框有些困难，并且检测效果也并不理想。于是，我们找到了yolov8网络模型，它拥有强大的检测斜框的性能，在无遮挡的数据集上的检测率达到了95\%以上，并且它也提供了使用训练好的模型的窗口，为我们的调参工作提供了方便。
+
+选好模型后，我就开始编写高斯光斑生成以及可视化的代码。由于课设需要对于飞机有不同遮挡程度的光斑，所以需要把光斑生成在飞机的位置，避免光斑远离飞机，生成无效的样本。根据飞机的标签文件，可以准确找到飞机的框，从而在框内随机选择光斑中心，再随机确定光斑的半径，以模拟真实情况，生成多样化的样本。最后计算光斑的遮挡程度，考虑到高斯光斑边缘透明度的变化，不能简单地计算高斯光斑的面积，需要对光斑的边缘设计权重，以计算合适光斑遮挡程度。
+
+在可视化的方面，我的思路是编写一个实时检测飞机目标的程序。选择输入一张原始的包含飞机的图片以及它对应的标签，然后我们可以在可视化界面上用鼠标确定高斯光斑生成的位置以及用键盘输入高斯光斑的半径，程序会自动生成对应的高斯光斑遮挡图像，并调用已经训练好的网络模型进行飞机检测，最后在可视化界面上框出检测得到的飞机目标，并同时显示它的置信度。最后我成功实现的程序功能。
+
+本次课设，我深入了解了各种目标检测的模型以及它们的差异和优势，学习了f-rcnn和yolov8网络模型的结构的搭建，并且获得了如何根据具体问题进行针对性的实验设计的经验。最重要的是，我得到了宝贵的团队协作解决一个实际问题的经验。
+
+
+\vfill
+
+\section{龙子川}
+随着长达数月的课程设计落下帷幕，我在这项关于《遮挡条件下遥感图像中的飞机目标检测研究与应用》的探索中收获满满。这段旅程让我从一个对遥感目标检测仅有模糊概念的初学者，成长为能够独立构建解决方案的实践者。这不仅磨练了我的技术功底，更重要的是，它重塑了我拆解并应对复杂问题的思维框架。在项目中，我主要负责技术环境的配置、搭建核心的YOLOv8-OBB旋转框检测模型，并参与了参数优化工作，每一个阶段都既是挑战，也是一次宝贵的认知升级。
+
+我的核心职责是为项目打造一个稳定高效的训练平台，并充分发掘YOLOv8-OBB模型的潜力。起初，我便一头扎进了繁琐的环境配置中，从解决棘手的CUDA与PyTorch版本兼容问题，到成功搭建起第一个可以训练的train.py代码，成功跑通第一个训练流程时，那种从无到有、扫清所有障碍的成就感是难以言喻的。随后，我将重心转向模型性能的极限压榨——参数优化。这并非简单的试错，而是一场基于理论和经验的精妙实验。我系统地调整了学习率、批处理大小、数据增强策略等超参数，严密监控着mAP、召回率等指标的每一次跳动。当模型的性能在我的调优下，相较于基线模型实现了质的飞跃时，我深刻体会到了理论指导实践，通过精细化运营提升模型上限的巨大乐趣。
+
+回溯整个历程，我也清晰地看到了自身的局限。初期，我的思维模式过于聚焦于"技术实现"与"指标提升"。我一度沉浸在调整超参数、刷新mAP分数的循环中，却在某种程度上忽略了模型在整个项目研究中的战略定位——它不仅是一个追求高分的工具，更是用于对比不同遮挡场景、验证算法泛化性的基石。这种对最终目标的宏观把握不足，直接导致我低估了交叉验证环节的深层意义，也让我在面对性能权衡现象时感到困惑，未能第一时间从训练数据分布的根源上找到症结。
+
+展望未来，这次经历为我规划了清晰的成长路径。首先，我将着力培养自己的系统性思维，在任何项目中，都要跳出自己负责的模块，主动思考局部任务与整体目标之间的关联。其次，我渴望探索更前沿的模型架构与训练范式。这次项目让我对YOLO系列有了深入了解，未来我希望探索更强大的模型主干网络（Backbone）、更先进的标签分配策略（Label Assignment）以及如Faster-RCNN等训练方法，力求在提升模型鲁棒性的同时，有效缓解性能此消彼长的困境。总而言之，这次课设是我的一个重要里程碑，它不仅让我对人工智能的魅力与挑战有了更切实的体会，更点燃了我在此领域持续深耕的决心与热情。
+
+\vfill
+
+\newpage
+% --- 参考文献 ---
+\begin{thebibliography}{99}
+    \bibitem{dota}
+    G. S. Xia, et al. "DOTA: A Large-scale Dataset for Object Detection in Aerial Images." \textit{CVPR}, 2018.
+
+    \bibitem{yolov8}
+    Ultralytics. "YOLOv8." \url{https://github.com/ultralytics/ultralytics}, 2023.
+
+    \bibitem{focal_loss}
+    T. Y. Lin, et al. "Focal Loss for Dense Object Detection." \textit{ICCV}, 2017.
+
+    \bibitem{iou}
+    H. Rezatofighi, et al. "Generalized Intersection over Union: A Metric and A Loss for Bounding Box Regression." \textit{CVPR}, 2019.
+    
+    \bibitem{wang2023survey}
+    K. Wang, et al. "Oriented Object Detection in Optical Remote Sensing Images using Deep Learning: A Survey." \textit{arXiv preprint arXiv:2302.10473}, 2023.
+
+    \bibitem{roitransformer}
+    J. Ding, et al. "Learning RoI Transformer for Oriented Object Detection in Aerial Images." \textit{CVPR}, 2019.
+
+    \bibitem{r3det}
+    X. Yang, et al. "R3Det: Refined Single-Stage Detector with Feature Refinement for Rotating Object." \textit{AAAI}, 2021.
+
+    \bibitem{s2anet}
+    J. Han, et al. "Align Deep Features for Oriented Object Detection." \textit{IEEE Transactions on Geoscience and Remote Sensing}, 2022.
+
+    \bibitem{cfa}
+    Z. Guo, et al. "Convex-Hull Feature Adaptation for Oriented Object Detection." \textit{CVPR}, 2021.
+    
+    \bibitem{csl}
+    X. Yang and J. Yan. "Arbitrary-Oriented Object Detection with Circular Smooth Label." \textit{ECCV}, 2020.
+
+    \bibitem{gwd}
+    X. Yang, et al. "Rethinking Rotated Object Detection with Gaussian Wasserstein Distance." \textit{ICML}, 2021.
+
+    \bibitem{glidingvertex}
+    Y. Xu, et al. "Gliding Vertex on the Horizontal Bounding Box for Multi-Oriented Object Detection." \textit{IEEE Transactions on Pattern Analysis and Machine Intelligence}, 2021.
+
+    \bibitem{randomerasing}
+    Z. Zhong, et al. "Random Erasing Data Augmentation." \textit{AAAI}, 2020.
+
+    \bibitem{cspnet}
+    C. Y. Wang, et al. "CSPNet: A New Backbone That Can Enhance Learning Capability of CNN." \textit{CVPR Workshops}, 2020.
+
+    \bibitem{panet}
+    S. Liu, et al. "Path Aggregation Network for Instance Segmentation." \textit{CVPR}, 2018.
+
+    \bibitem{tood}
+    C. Feng, et al. "TOOD: Task-Aligned One-stage Object Detection." \textit{ICCV}, 2021.
+
+    \bibitem{curriculumlearning}
+    Y. Bengio, et al. "Curriculum Learning." \textit{ICML}, 2009.
+
+    \bibitem{swintransformer}
+    Z. Liu, et al. "Swin Transformer: Hierarchical Vision Transformer Using Shifted Windows." \textit{ICCV}, 2021.
+\end{thebibliography}
+
+% --- 致谢 ---
+\section*{致谢}
+在此，我们衷心感谢胡静老师在本项目研究过程中给予的悉心指导和宝贵建议。老师严谨的治学态度、深厚的专业知识和开阔的科研视野，为我们指明了研究方向，帮助我们克服了诸多技术难题。同时，感谢所有项目组成员的共同努力和协作，没有大家的辛勤付出，本项目的顺利完成是不可想象的。
+
+\appendix
+\chapter{附录：关键代码实现}
+\section{高斯光斑生成与叠加核心代码}
+本节展示了用于生成参数化椭圆高斯光斑并将其叠加到背景图像上的核心 Python 代码。代码基于 OpenCV 和 NumPy 实现。
+
+\begin{lstlisting}[language=Python, caption={spot/generate.py 部分代码}, label={lst:spot_generation}]
+import numpy as np
+import cv2
+import math
+from shapely.geometry import Polygon
+
+# 生成椭圆高斯光斑的 RGBA 图像
+def generate_gaussian_spot(spot_canvas_size_wh, amplitude, sigma_x, sigma_y, rotation_angle_deg, spot_color_rgb=(255, 255, 255)):
+    width, height = int(round(spot_canvas_size_wh[0])), int(round(spot_canvas_size_wh[1]))
+    center_x, center_y = width / 2.0, height / 2.0
+    rotation_angle_rad = np.deg2rad(rotation_angle_deg)
+    
+    cos_theta = np.cos(rotation_angle_rad)
+    sin_theta = np.sin(rotation_angle_rad)
+    
+    x_coords = np.arange(width)
+    y_coords = np.arange(height)
+    xx, yy = np.meshgrid(x_coords, y_coords)
+    
+    x_shifted = xx - center_x
+    y_shifted = yy - center_y
+    
+    x_prime = x_shifted * cos_theta + y_shifted * sin_theta
+    y_prime = -x_shifted * sin_theta + y_shifted * cos_theta
+    
+    sigma_x_sq = sigma_x**2 if sigma_x > 1e-6 else 1e-6
+    sigma_y_sq = sigma_y**2 if sigma_y > 1e-6 else 1e-6
+    
+    exponent = -((x_prime**2) / (2 * sigma_x_sq) + (y_prime**2) / (2 * sigma_y_sq))
+    intensity = amplitude * np.exp(exponent)
+    
+    alpha_channel = np.clip(intensity, 0, 1) * 255
+    alpha_channel = alpha_channel.astype(np.uint8)
+    
+    spot_rgba = np.zeros((height, width, 4), dtype=np.uint8)
+    spot_rgba[..., 0] = spot_color_rgb[2] # Blue
+    spot_rgba[..., 1] = spot_color_rgb[1] # Green
+    spot_rgba[..., 2] = spot_color_rgb[0] # Red
+    spot_rgba[..., 3] = alpha_channel
+    
+    return spot_rgba
+
+# 将光斑叠加到背景图像
+def blend_spot_on_image(background_image_bgr, spot_rgba, top_left_x_on_bg, top_left_y_on_bg):
+    bg_h, bg_w = background_image_bgr.shape[:2]
+    spot_h, spot_w = spot_rgba.shape[:2]
+    
+    # 定义在背景图像上的 ROI
+    roi_x_start_bg = top_left_x_on_bg
+    roi_y_start_bg = top_left_y_on_bg
+    
+    # ... 省略边界检查与裁剪逻辑 ...
+
+    bg_roi = background_image_bgr[roi_y_start_bg:roi_y_end_bg, roi_x_start_bg:roi_x_end_bg]
+    spot_rgb = spot_rgba[:, :, :3]
+    spot_alpha = spot_rgba[:, :, 3].astype(np.float32) / 255.0
+    spot_alpha_3channel = np.stack([spot_alpha]*3, axis=-1)
+    
+    # Alpha 混合
+    blended_roi = (spot_rgb.astype(np.float32) * spot_alpha_3channel) + \
+                  (bg_roi.astype(np.float32) * (1.0 - spot_alpha_3channel))
+    blended_roi = blended_roi.astype(np.uint8)
+    
+    result_image = background_image_bgr.copy()
+    result_image[roi_y_start_bg:roi_y_end_bg, roi_x_start_bg:roi_x_end_bg] = blended_roi
+    
+    return result_image
+
+# 创建椭圆多边形（用于OOAP计算）
+def create_ellipse_polygon(center_x, center_y, sigma_x, sigma_y, rotation_angle_deg, k_sigma_level=2.0, N_points=50):
+    a = k_sigma_level * sigma_x
+    b = k_sigma_level * sigma_y
+    
+    t = np.linspace(0, 2 * np.pi, N_points, endpoint=False)
+    ellipse_x_unrotated = a * np.cos(t)
+    ellipse_y_unrotated = b * np.sin(t)
+    
+    rotation_angle_rad = np.deg2rad(rotation_angle_deg)
+    cos_theta = np.cos(rotation_angle_rad)
+    sin_theta = np.sin(rotation_angle_rad)
+    
+    ellipse_x_rotated = ellipse_x_unrotated * cos_theta - ellipse_y_unrotated * sin_theta + center_x
+    ellipse_y_rotated = ellipse_x_unrotated * sin_theta + ellipse_y_unrotated * cos_theta + center_y
+    
+    ellipse_points = list(zip(ellipse_x_rotated, ellipse_y_rotated))
+    return Polygon(ellipse_points)
+\end{lstlisting}
+
+\end{document}
