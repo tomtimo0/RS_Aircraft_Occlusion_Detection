@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  remote-sensing-app:
+    build: .
+    container_name: remote-sensing-detection-app
+    ports:
+      - "8501:8501"
+    volumes:
+      # 挂载模型目录，方便更新模型文件
+      - ./models_yolo:/app/models_yolo
+      # 挂载数据目录，方便上传文件
+      - ./data:/app/data
+      # 挂载结果目录，保存检测结果
+      - ./results:/app/results
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge 
